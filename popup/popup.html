@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZapFilter CRM</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Cabeçalho -->
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zm6 0h4v10h-4zm6 0h4v14h-4z"/></svg>
+        </div>
+        <div>
+          <h1>ZapFilter CRM</h1>
+          <p class="subtitle">WhatsApp Web</p>
+        </div>
+      </div>
+      <span class="status-badge" id="status-badge">Ativo 🚀</span>
+    </header>
+
+    <!-- Seção de Recursos -->
+    <main class="content">
+      <div class="card">
+        <h3>Filtros & Colunas</h3>
+        <ul class="filter-list">
+          <li>
+            <span class="dot contacts"></span>
+            <strong>Normal:</strong> Todas as conversas
+          </li>
+          <li>
+            <span class="dot unread"></span>
+            <strong>Não Lido:</strong> Mensagens pendentes
+          </li>
+          <li>
+            <span class="dot groups"></span>
+            <strong>Grupo:</strong> Apenas grupos
+          </li>
+          <li>
+            <span class="dot won"></span>
+            <strong>Respondido:</strong> Mensagens já respondidas
+          </li>
+        </ul>
+      </div>
+
+      <div class="action-section">
+        <button class="btn btn-primary" id="btn-open-wa">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 2.17.7 4.19 1.94 5.86L2.8 22l4.31-1.12C8.68 21.57 10.29 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.7 0-3.3-.5-4.66-1.39l-.33-.22-2.56.67.68-2.49-.24-.38C3.99 15.11 3.5 13.6 3.5 12c0-4.69 3.81-8.5 8.5-8.5s8.5 3.81 8.5 8.5-3.81 8.5-8.5 8.5z"/></svg>
+          Abrir WhatsApp Web
+        </button>
+      </div>
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="footer">
+      <p>ZapFilter • CRM Inteligente</p>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

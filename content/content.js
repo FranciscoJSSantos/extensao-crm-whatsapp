@@ -1,0 +1,944 @@
+/**
+ * ZapFilter CRM Pro - Fullscreen Kanban + Modal de Conversa + Observações Visuais
+ */
+
+(function () {
+  'use strict';
+
+  console.log('[ZapFilter CRM Pro] 🚀 Inicializado com Falta Responder e Observações Visuais.');
+
+  let currentFilter = 'all';
+  let observer = null;
+  let isFiltering = false;
+  let searchQuery = '';
+
+  // 5 Colunas do Kanban
+  const COLUMNS = [
+    { id: 'normal', name: 'Normal', color: '#53bdeb' },
+    { id: 'unread', name: 'Não Lido', color: '#25d366' },
+    { id: 'waiting', name: 'Falta responder', color: '#f7a23b' },
+    { id: 'groups', name: 'Grupo', color: '#a855f7' },
+    { id: 'replied', name: 'Respondido', color: '#00a884' }
+  ];
+
+  // Ícones SVG
+  const ICONS = {
+    kanban: `<svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zm6 0h4v10h-4zm6 0h4v14h-4z"/></svg>`,
+    normal: `<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>`,
+    unread: `<svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/></svg>`,
+    waiting: `<svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`,
+    groups: `<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
+    replied: `<svg viewBox="0 0 24 24"><path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/></svg>`,
+    sync: `<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`,
+    search: `<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>`,
+    chat: `<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>`,
+    note: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`
+  };
+
+  /* --------------------------------------------------------------------------
+     Análise e Extração de Conversas Reais (Sem Duplicatas)
+     -------------------------------------------------------------------------- */
+  function inspectChatItem(element) {
+    const text = (element.innerText || '').toLowerCase();
+    const aria = (element.getAttribute('aria-label') || '').toLowerCase();
+
+    // 1. Grupo (Todos os grupos ficam na coluna Grupo)
+    const hasGroupIcon = !!element.querySelector(
+      'span[data-icon="default-group"], span[data-icon="group"], span[data-icon="community"], span[data-icon="newsletter"]'
+    );
+    const isGroup = hasGroupIcon || aria.includes('grupo') || aria.includes('group') || aria.includes('comunidade');
+
+    // 2. Não Lido
+    const unreadEl = element.querySelector(
+      'span[aria-label*="não lida"], span[aria-label*="unread"], [aria-label*="mensagem não lida"], span[data-icon="unread-count"]'
+    );
+    let isUnread = !isGroup && (!!unreadEl || aria.includes('não lida') || aria.includes('unread'));
+
+    if (!isUnread && !isGroup) {
+      const badges = element.querySelectorAll('span');
+      for (const badge of badges) {
+        const val = badge.textContent.trim();
+        if (/^\d+$/.test(val) && val.length <= 4) {
+          const bg = window.getComputedStyle(badge).backgroundColor;
+          if (bg.includes('0, 168, 132') || bg.includes('37, 211, 102') || bg.includes('0, 128, 105')) {
+            isUnread = true;
+            break;
+          }
+        }
+      }
+    }
+
+    // 3. Respondido (Última mensagem enviada por você)
+    const hasSentCheck = !!element.querySelector(
+      'span[data-icon="msg-dblcheck"], span[data-icon="msg-check"], span[data-icon="status-v3"], span[data-icon="msg-time"]'
+    );
+    const isReplied = !isGroup && hasSentCheck;
+
+    // Determina a coluna automática padrão:
+    // NOTA: 'Falta responder' (waiting) é 100% manual (só entra quem o usuário puxar/mover)
+    let defaultCol = 'normal';
+    if (isGroup) {
+      defaultCol = 'groups';
+    } else if (isUnread) {
+      defaultCol = 'unread';
+    } else if (isReplied) {
+      defaultCol = 'replied';
+    } else {
+      defaultCol = 'normal';
+    }
+
+    return { isUnread, isGroup, isReplied, defaultCol };
+  }
+
+  function extractRealWhatsAppChats() {
+    const paneSide = document.querySelector('#pane-side') || 
+                     document.querySelector('div[data-testid="chat-list"]') || 
+                     document.querySelector('div[role="grid"]');
+    
+    if (!paneSide) return [];
+
+    let rows = paneSide.querySelectorAll('div[role="listitem"]');
+    if (!rows || rows.length === 0) {
+      rows = paneSide.querySelectorAll('div[role="row"]');
+    }
+    if (!rows || rows.length === 0) {
+      rows = paneSide.querySelectorAll('div[data-testid="cell-frame-container"]');
+    }
+
+    const realChats = [];
+    const seenNames = new Set();
+
+    rows.forEach((row) => {
+      const titleEl = row.querySelector('span[title], div[title], [data-testid="cell-frame-title"] span');
+      const name = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent.trim()) : null;
+      if (!name || name.length < 1) return;
+
+      const normalizedName = name.trim().toLowerCase();
+      if (seenNames.has(normalizedName)) return; // Impede duplicatas
+      seenNames.add(normalizedName);
+
+      const imgEl = row.querySelector('img[src*="whatsapp.net"], img[data-testid="avatar-image"], img[src*="blob:"]');
+      const avatarSrc = imgEl ? imgEl.getAttribute('src') : null;
+
+      const timeEl = row.querySelector('div[data-testid="cell-frame-title"] + div, span[aria-label*=":"]');
+      const time = timeEl ? timeEl.textContent.trim() : '';
+
+      const lines = row.innerText.split('\n').filter(l => l.trim() && l !== name && l !== time);
+      const lastMessage = lines[0] || 'Conversa ativa';
+
+      const info = inspectChatItem(row);
+
+      realChats.push({
+        name: name,
+        avatar: avatarSrc,
+        lastMessage: lastMessage,
+        time: time,
+        isUnread: info.isUnread,
+        isGroup: info.isGroup,
+        isReplied: info.isReplied,
+        isWaiting: info.isWaiting,
+        defaultCol: info.defaultCol,
+        domElement: row
+      });
+    });
+
+    return realChats;
+  }
+
+  /* --------------------------------------------------------------------------
+     Persistência Blindada do Kanban e Observações (localStorage + chrome.storage)
+     -------------------------------------------------------------------------- */
+  function getLocalData(key) {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setLocalData(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      console.warn('[ZapFilter] Erro ao salvar no localStorage:', e);
+    }
+  }
+
+  function getContactColumnMap(callback) {
+    // 1. Tenta carregar do localStorage imediatamente
+    const localCols = getLocalData('zap_contact_columns') || {};
+    const localNotes = getLocalData('zap_contact_notes') || {};
+    const localArchived = getLocalData('zap_archived_replied') || [];
+
+    // 2. Sincroniza com o chrome.storage.local
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['zap_contact_columns', 'zap_contact_notes', 'zap_archived_replied'], (res) => {
+        const mergedCols = { ...localCols, ...(res.zap_contact_columns || {}) };
+        const mergedNotes = { ...localNotes, ...(res.zap_contact_notes || {}) };
+        const mergedArchived = Array.from(new Set([...localArchived, ...(res.zap_archived_replied || [])]));
+        
+        setLocalData('zap_contact_columns', mergedCols);
+        setLocalData('zap_contact_notes', mergedNotes);
+        setLocalData('zap_archived_replied', mergedArchived);
+        callback(mergedCols, mergedNotes, mergedArchived);
+      });
+    } else {
+      callback(localCols, localNotes, localArchived);
+    }
+  }
+
+  function setContactColumn(contactName, columnId, callback) {
+    getContactColumnMap((map, notes, archived) => {
+      map[contactName] = columnId;
+      // Se mover manualmente para outra coluna, remove do arquivado
+      const updatedArchived = archived.filter(name => name !== contactName);
+      
+      setLocalData('zap_contact_columns', map);
+      setLocalData('zap_archived_replied', updatedArchived);
+
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ zap_contact_columns: map, zap_archived_replied: updatedArchived }, () => {
+          if (callback) callback();
+        });
+      } else {
+        if (callback) callback();
+      }
+    });
+  }
+
+  function clearRepliedContacts(repliedNames, callback) {
+    getContactColumnMap((cols, notes, archived) => {
+      const updatedArchived = Array.from(new Set([...archived, ...repliedNames]));
+      setLocalData('zap_archived_replied', updatedArchived);
+
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ zap_archived_replied: updatedArchived }, () => {
+          if (callback) callback();
+        });
+      } else {
+        if (callback) callback();
+      }
+    });
+  }
+
+  function saveContactNote(contactName, noteText, callback) {
+    getContactColumnMap((cols, notes, archived) => {
+      if (noteText && noteText.trim()) {
+        notes[contactName] = noteText.trim();
+      } else {
+        delete notes[contactName];
+      }
+      setLocalData('zap_contact_notes', notes);
+
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ zap_contact_notes: notes }, () => {
+          if (callback) callback();
+        });
+      } else {
+        if (callback) callback();
+      }
+    });
+  }
+
+  /* --------------------------------------------------------------------------
+     Filtros Rápidos na Barra Superior
+     -------------------------------------------------------------------------- */
+  function getChatListContainer() {
+    return document.querySelector('#pane-side') ||
+           document.querySelector('div[data-testid="chat-list"]') ||
+           document.querySelector('div[role="grid"]');
+  }
+
+  function applyActiveFilter() {
+    if (isFiltering) return;
+    isFiltering = true;
+
+    try {
+      const container = getChatListContainer();
+      if (!container) {
+        isFiltering = false;
+        return;
+      }
+
+      let chatRows = container.querySelectorAll('div[role="listitem"], div[role="row"], div[data-testid="cell-frame-container"]');
+      if (!chatRows || chatRows.length === 0) {
+        const inner = container.querySelector('div > div > div') || container;
+        chatRows = inner.children;
+      }
+
+      let unreadCount = 0;
+
+      Array.from(chatRows).forEach(row => {
+        if (row.id === 'zapfilter-container' || row.closest('#zapfilter-container')) return;
+
+        const info = inspectChatItem(row);
+        if (info.isUnread) unreadCount++;
+
+        let show = true;
+        if (currentFilter === 'groups') {
+          show = info.isGroup;
+        } else if (currentFilter === 'unread') {
+          show = info.isUnread;
+        } else if (currentFilter === 'waiting') {
+          show = info.isWaiting;
+        } else if (currentFilter === 'replied') {
+          show = info.isReplied;
+        } else if (currentFilter === 'normal') {
+          show = !info.isGroup;
+        }
+
+        if (show) {
+          row.classList.remove('zapfilter-hidden-chat');
+        } else {
+          row.classList.add('zapfilter-hidden-chat');
+        }
+      });
+
+      const badge = document.querySelector('#zapfilter-btn-unread .zapfilter-badge');
+      if (badge) {
+        if (unreadCount > 0) {
+          badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+          badge.style.display = 'inline-flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+    } catch (err) {
+      console.warn('[ZapFilter] Erro ao filtrar:', err);
+    } finally {
+      isFiltering = false;
+    }
+  }
+
+  /* --------------------------------------------------------------------------
+     Abertura e Foco no WhatsApp Web (Minimiza Kanban e Abre Chat Diretamente)
+     -------------------------------------------------------------------------- */
+  function openWhatsAppDirectly(contactName) {
+    console.log(`[ZapFilter] Abrindo conversa com "${contactName}" no WhatsApp...`);
+    
+    // 1. Fecha o Kanban e o Modal
+    closeKanban();
+
+    // 2. Reseta os filtros visuais para garantir que a conversa não esteja com display:none
+    currentFilter = 'all';
+    document.querySelectorAll('.zapfilter-btn').forEach(b => {
+      if (b.getAttribute('data-filter') === 'all') b.classList.add('active');
+      else b.classList.remove('active');
+    });
+    document.querySelectorAll('.zapfilter-hidden-chat').forEach(el => el.classList.remove('zapfilter-hidden-chat'));
+
+    setTimeout(() => {
+      const paneSide = document.querySelector('#pane-side') || document.querySelector('div[role="grid"]');
+      if (!paneSide) return;
+
+      const rows = paneSide.querySelectorAll('div[role="listitem"], div[role="row"], div[data-testid="cell-frame-container"]');
+      let targetRow = null;
+
+      for (const row of rows) {
+        const titleEl = row.querySelector('span[title], div[title], [data-testid="cell-frame-title"] span');
+        const name = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent.trim()) : '';
+        if (name === contactName || row.innerText.includes(contactName)) {
+          targetRow = row;
+          break;
+        }
+      }
+
+      if (targetRow) {
+        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Simulação de clique real do React com coordenadas
+        const clickTarget = targetRow.querySelector('div[role="button"]') || targetRow.querySelector('span[title]') || targetRow;
+        const rect = clickTarget.getBoundingClientRect();
+        const clientX = rect.left + rect.width / 2;
+        const clientY = rect.top + rect.height / 2;
+
+        const eventOptions = {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+          buttons: 1,
+          clientX: clientX,
+          clientY: clientY,
+          screenX: clientX,
+          screenY: clientY
+        };
+
+        ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(evt => {
+          clickTarget.dispatchEvent(new MouseEvent(evt, eventOptions));
+        });
+
+        console.log(`[ZapFilter] Conversa "${contactName}" clicada no DOM com sucesso.`);
+      } else {
+        // Fallback: Se o chat estiver fora da rolagem virtual, usa a busca nativa do WhatsApp
+        console.log(`[ZapFilter] Chat "${contactName}" fora do viewport. Usando busca nativa...`);
+        const searchInput = document.querySelector('div[contenteditable="true"][data-tab="3"]') ||
+                            document.querySelector('#side div[contenteditable="true"]') ||
+                            document.querySelector('div[data-testid="chat-list-search"] div[contenteditable="true"]');
+        if (searchInput) {
+          searchInput.focus();
+          document.execCommand('selectAll', false, null);
+          document.execCommand('insertText', false, contactName);
+          
+          searchInput.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: contactName }));
+
+          setTimeout(() => {
+            const firstResult = document.querySelector('#pane-side div[role="listitem"], #pane-side div[role="row"]');
+            if (firstResult) {
+              const rect = firstResult.getBoundingClientRect();
+              const clickTarget = firstResult.querySelector('div[role="button"]') || firstResult;
+              ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(evt => {
+                clickTarget.dispatchEvent(new MouseEvent(evt, {
+                  view: window,
+                  bubbles: true,
+                  cancelable: true,
+                  clientX: rect.left + rect.width / 2,
+                  clientY: rect.top + rect.height / 2
+                }));
+              });
+            }
+          }, 400);
+        }
+      }
+    }, 120);
+  }
+
+  /* --------------------------------------------------------------------------
+     Modal de Conversa com Observação Visual
+     -------------------------------------------------------------------------- */
+  function openChatModal(chat) {
+    let modal = document.querySelector('#zap-chat-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'zap-chat-modal';
+      document.body.appendChild(modal);
+    }
+
+    getContactColumnMap((columnMap, notesMap) => {
+      const currentCol = columnMap[chat.name] || chat.defaultCol;
+      const currentNote = notesMap[chat.name] || '';
+
+      modal.innerHTML = `
+        <div class="zap-modal-chatbox">
+          <header class="zap-modal-header">
+            <div class="zap-modal-user">
+              ${chat.avatar ? `
+                <img class="zap-modal-avatar" src="${chat.avatar}" alt="Avatar">
+              ` : `
+                <div class="zap-modal-avatar-fallback">${(chat.name || 'C')[0]}</div>
+              `}
+              <div class="zap-modal-title">
+                <h3>${escapeHtml(chat.name)}</h3>
+                <p>${chat.isGroup ? 'Grupo' : 'Contato'} • ${chat.time || 'Recente'}</p>
+              </div>
+            </div>
+            <button class="zap-modal-close-btn" id="zap-modal-close-btn" title="Fechar">&times;</button>
+          </header>
+
+          <div class="zap-modal-body">
+            <div class="zap-chat-bubble">
+              <div class="zap-chat-bubble-label">Última Mensagem</div>
+              <div>${escapeHtml(chat.lastMessage)}</div>
+            </div>
+
+            <!-- Caixa de Observação / Pendência Visual -->
+            <div class="zap-modal-note-box">
+              <div class="zap-modal-note-header">
+                <span class="zap-modal-note-title">
+                  ${ICONS.note}
+                  <span>Observação / Pendência</span>
+                </span>
+                <div style="display: flex; gap: 6px;">
+                  <button class="zap-btn-clear-note" id="zap-btn-clear-note" title="Apagar observação">Limpar Nota</button>
+                  <button class="zap-btn-save-note" id="zap-btn-save-note">Salvar Nota</button>
+                </div>
+              </div>
+              <textarea id="zap-input-contact-note" placeholder="Ex: Aguardando envio de comprovante...">${escapeHtml(currentNote)}</textarea>
+            </div>
+
+            <div class="zap-modal-crm-box">
+              <span class="zap-modal-crm-title">Etapa no Kanban</span>
+              <div class="zap-modal-select-stage">
+                <label>Mover para:</label>
+                <select id="zap-modal-col-select">
+                  ${COLUMNS.map(col => `
+                    <option value="${col.id}" ${currentCol === col.id ? 'selected' : ''}>${col.name}</option>
+                  `).join('')}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <footer class="zap-modal-footer">
+            <button class="zap-btn-direct-wa" id="zap-modal-btn-open-wa">
+              ${ICONS.chat}
+              <span>Abrir Conversa no WhatsApp</span>
+            </button>
+          </footer>
+        </div>
+      `;
+
+      modal.style.setProperty('display', 'flex', 'important');
+
+      // Fechar modal no botão X
+      modal.querySelector('#zap-modal-close-btn').onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        modal.style.setProperty('display', 'none', 'important');
+      };
+
+      // Fechar clicando fora da caixa
+      modal.onclick = function(e) {
+        if (e.target === modal) {
+          modal.style.setProperty('display', 'none', 'important');
+        }
+      };
+
+      // Salvar Observação
+      const saveBtn = modal.querySelector('#zap-btn-save-note');
+      const clearBtn = modal.querySelector('#zap-btn-clear-note');
+      const noteInput = modal.querySelector('#zap-input-contact-note');
+
+      saveBtn.onclick = function() {
+        saveContactNote(chat.name, noteInput.value, () => {
+          saveBtn.textContent = 'Salvo! ✓';
+          setTimeout(() => saveBtn.textContent = 'Salvar Nota', 1500);
+          refreshKanban();
+        });
+      };
+
+      clearBtn.onclick = function() {
+        noteInput.value = '';
+        saveContactNote(chat.name, '', () => {
+          clearBtn.textContent = 'Limpo! ✓';
+          setTimeout(() => clearBtn.textContent = 'Limpar Nota', 1500);
+          refreshKanban();
+        });
+      };
+
+      // Alterar coluna
+      modal.querySelector('#zap-modal-col-select').onchange = function(e) {
+        const newCol = e.target.value;
+        setContactColumn(chat.name, newCol, () => {
+          refreshKanban();
+        });
+      };
+
+      // Abrir no WhatsApp
+      modal.querySelector('#zap-modal-btn-open-wa').onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openWhatsAppDirectly(chat.name);
+      };
+    });
+  }
+
+  /* --------------------------------------------------------------------------
+     Quadro Kanban Fullscreen
+     -------------------------------------------------------------------------- */
+  function openKanban() {
+    let overlay = document.querySelector('#zap-kanban-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'zap-kanban-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.setProperty('display', 'flex', 'important');
+    refreshKanban();
+  }
+
+  function closeKanban() {
+    const overlay = document.querySelector('#zap-kanban-overlay');
+    if (overlay) {
+      overlay.style.setProperty('display', 'none', 'important');
+    }
+    const modal = document.querySelector('#zap-chat-modal');
+    if (modal) {
+      modal.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  function refreshKanban() {
+    const overlay = document.querySelector('#zap-kanban-overlay');
+    if (!overlay) return;
+
+    const realChats = extractRealWhatsAppChats();
+
+    getContactColumnMap((columnMap, notesMap, archivedList) => {
+      const archivedSet = new Set(archivedList || []);
+      
+      const cards = realChats
+        .map(chat => ({
+          ...chat,
+          columnId: columnMap[chat.name] || chat.defaultCol,
+          note: notesMap[chat.name] || ''
+        }))
+        // Oculta conversas que foram limpas da coluna Respondido (a menos que tenham sido movidas manualmente para outra coluna)
+        .filter(card => {
+          if (card.columnId === 'replied' && archivedSet.has(card.name)) {
+            return false;
+          }
+          return true;
+        });
+
+      renderKanbanBoard(overlay, cards);
+    });
+  }
+
+  function renderKanbanBoard(overlay, cards) {
+    const filteredCards = searchQuery
+      ? cards.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (c.note && c.note.toLowerCase().includes(searchQuery.toLowerCase())))
+      : cards;
+
+    const repliedCardsCount = cards.filter(c => c.columnId === 'replied').length;
+
+    overlay.innerHTML = `
+      <header class="zap-kanban-header">
+        <div class="zap-kanban-brand">
+          <div class="zap-brand-icon">
+            ${ICONS.kanban}
+          </div>
+          <div class="zap-brand-text">
+            <h2>Quadro Kanban • WhatsApp CRM</h2>
+            <p>${cards.length} conversas ativas no quadro</p>
+          </div>
+        </div>
+
+        <div class="zap-kanban-controls">
+          <div class="zap-search-box">
+            ${ICONS.search}
+            <input type="text" id="zap-kb-search" placeholder="Buscar nas conversas ou notas..." value="${searchQuery}">
+          </div>
+
+          <button class="zap-btn-ctrl" id="zap-kb-btn-refresh" title="Atualizar">
+            ${ICONS.sync}
+            <span>Sincronizar</span>
+          </button>
+
+          ${repliedCardsCount > 0 ? `
+            <button class="zap-btn-ctrl zap-btn-clear-replied" id="zap-kb-btn-clear-replied" title="Limpar conversas já respondidas do quadro">
+              <span>🧹 Limpar Respondidos (${repliedCardsCount})</span>
+            </button>
+          ` : ''}
+
+          <button class="zap-btn-ctrl zap-btn-close-main" id="zap-kb-btn-close" title="Fechar Kanban">
+            <span>&times; Fechar Kanban</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="zap-kanban-board">
+        ${COLUMNS.map(col => {
+          const colCards = filteredCards.filter(c => c.columnId === col.id);
+          return `
+            <div class="zap-kanban-col" data-col-id="${col.id}">
+              <div class="zap-col-head">
+                <div class="zap-col-left">
+                  <span class="zap-col-pill" style="background-color: ${col.color};"></span>
+                  <span class="zap-col-title">${col.name}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  ${col.id === 'replied' && colCards.length > 0 ? `
+                    <button class="zap-btn-col-clear" id="zap-col-clear-replied" title="Limpar esta coluna">🧹 Limpar</button>
+                  ` : ''}
+                  <span class="zap-col-counter">${colCards.length}</span>
+                </div>
+              </div>
+
+              <div class="zap-col-cardlist" data-col-id="${col.id}">
+                ${colCards.length === 0 ? `
+                  <div class="zap-empty-col">Nenhum chat aqui.<br>Arraste uma conversa para cá.</div>
+                ` : colCards.map(c => `
+                  <div class="zap-contact-card" draggable="true" data-contact-name="${escapeHtml(c.name)}">
+                    <div class="zap-card-profile">
+                      ${c.avatar ? `
+                        <img class="zap-card-avatar" src="${c.avatar}" alt="Avatar">
+                      ` : `
+                        <div class="zap-card-avatar-fallback">${(c.name || 'C')[0]}</div>
+                      `}
+                      <div class="zap-card-info">
+                        <span class="zap-card-name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</span>
+                        <span class="zap-card-time">${c.time || ''}</span>
+                      </div>
+                    </div>
+
+                    <!-- Exibição Visual da Observação / Pendência -->
+                    ${c.note ? `
+                      <div class="zap-card-note-badge" title="${escapeHtml(c.note)}">
+                        ${ICONS.note}
+                        <span>${escapeHtml(c.note)}</span>
+                      </div>
+                    ` : ''}
+
+                    ${c.lastMessage ? `
+                      <div class="zap-card-message" title="${escapeHtml(c.lastMessage)}">${escapeHtml(c.lastMessage)}</div>
+                    ` : ''}
+
+                    <div class="zap-card-bottom">
+                      ${c.isUnread ? `
+                        <span class="zap-card-badge-unread">Não lida</span>
+                      ` : c.isWaiting ? `
+                        <span class="zap-card-badge-waiting">Pendente</span>
+                      ` : `<span></span>`}
+
+                      <button class="zap-card-open-btn" data-contact-name="${escapeHtml(c.name)}">
+                        ${ICONS.chat}
+                        <span>Ver Conversa</span>
+                      </button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    // Botão Fechar Kanban
+    const closeBtn = overlay.querySelector('#zap-kb-btn-close');
+    if (closeBtn) {
+      closeBtn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeKanban();
+      };
+    }
+
+    const refreshBtn = overlay.querySelector('#zap-kb-btn-refresh');
+    if (refreshBtn) {
+      refreshBtn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        refreshKanban();
+      };
+    }
+
+    // Botão Limpar Respondidos
+    const clearRepliedAction = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const repliedNames = cards.filter(c => c.columnId === 'replied').map(c => c.name);
+      if (repliedNames.length > 0) {
+        clearRepliedContacts(repliedNames, () => {
+          refreshKanban();
+        });
+      }
+    };
+
+    const clearRepliedHeaderBtn = overlay.querySelector('#zap-kb-btn-clear-replied');
+    if (clearRepliedHeaderBtn) clearRepliedHeaderBtn.onclick = clearRepliedAction;
+
+    const clearRepliedColBtn = overlay.querySelector('#zap-col-clear-replied');
+    if (clearRepliedColBtn) clearRepliedColBtn.onclick = clearRepliedAction;
+
+    const searchInput = overlay.querySelector('#zap-kb-search');
+    if (searchInput) {
+      searchInput.oninput = function(e) {
+        searchQuery = e.target.value;
+        renderKanbanBoard(overlay, cards);
+        const newSearch = overlay.querySelector('#zap-kb-search');
+        if (newSearch) {
+          newSearch.focus();
+          newSearch.setSelectionRange(searchQuery.length, searchQuery.length);
+        }
+      };
+    }
+
+    // Clique no Card ou no botão "Ver Conversa" abre o Modal Popup
+    overlay.querySelectorAll('.zap-contact-card').forEach(card => {
+      card.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const name = card.getAttribute('data-contact-name');
+        const chat = cards.find(c => c.name === name);
+        if (chat) openChatModal(chat);
+      };
+    });
+
+    setupKanbanDragAndDrop(overlay);
+  }
+
+  function escapeHtml(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function setupKanbanDragAndDrop(overlay) {
+    let draggedContactName = null;
+
+    overlay.querySelectorAll('.zap-contact-card').forEach(cardEl => {
+      cardEl.addEventListener('dragstart', (e) => {
+        draggedContactName = cardEl.getAttribute('data-contact-name');
+        cardEl.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      cardEl.addEventListener('dragend', () => {
+        cardEl.classList.remove('is-dragging');
+      });
+    });
+
+    overlay.querySelectorAll('.zap-col-cardlist').forEach(colEl => {
+      colEl.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        colEl.classList.add('is-dragover');
+      });
+
+      colEl.addEventListener('dragleave', () => {
+        colEl.classList.remove('is-dragover');
+      });
+
+      colEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        colEl.classList.remove('is-dragover');
+        const targetColId = colEl.getAttribute('data-col-id');
+
+        if (draggedContactName && targetColId) {
+          setContactColumn(draggedContactName, targetColId, () => {
+            refreshKanban();
+          });
+        }
+      });
+    });
+  }
+
+  /* --------------------------------------------------------------------------
+     Header de Filtros Rápidos
+     -------------------------------------------------------------------------- */
+  function injectMainHeader() {
+    if (document.querySelector('#zapfilter-container')) return;
+
+    const side = document.querySelector('#side');
+    const paneSide = document.querySelector('#pane-side');
+    const searchContainer = side ? side.querySelector('div[tabindex="-1"], div._aigs, div._ai01, div[data-testid="chat-list-search"]') : null;
+
+    let targetParent = null;
+    let insertBeforeEl = null;
+
+    if (searchContainer && searchContainer.parentNode) {
+      targetParent = searchContainer.parentNode;
+      insertBeforeEl = searchContainer.nextSibling;
+    } else if (paneSide && paneSide.parentNode) {
+      targetParent = paneSide.parentNode;
+      insertBeforeEl = paneSide;
+    } else if (side) {
+      targetParent = side;
+      insertBeforeEl = side.firstChild;
+    }
+
+    if (!targetParent) return;
+
+    const toolbar = document.createElement('div');
+    toolbar.id = 'zapfilter-container';
+    toolbar.innerHTML = `
+      <button class="zapfilter-kanban-toggle" id="zapfilter-btn-open-kanban" title="Abrir Quadro Kanban">
+        ${ICONS.kanban}
+        <span>Quadro Kanban</span>
+      </button>
+
+      <button class="zapfilter-btn active" data-filter="all">
+        ${ICONS.normal}
+        <span>Normal</span>
+      </button>
+
+      <button class="zapfilter-btn" id="zapfilter-btn-unread" data-filter="unread">
+        ${ICONS.unread}
+        <span>Não Lido</span>
+        <span class="zapfilter-badge" style="display: none;">0</span>
+      </button>
+
+      <button class="zapfilter-btn" data-filter="waiting">
+        ${ICONS.waiting}
+        <span>Falta responder</span>
+      </button>
+
+      <button class="zapfilter-btn" data-filter="groups">
+        ${ICONS.groups}
+        <span>Grupo</span>
+      </button>
+
+      <button class="zapfilter-btn" data-filter="replied">
+        ${ICONS.replied}
+        <span>Respondido</span>
+      </button>
+
+      <button class="zapfilter-sync-btn" id="zapfilter-btn-sync" title="Atualizar conversas">
+        ${ICONS.sync}
+      </button>
+    `;
+
+    if (insertBeforeEl) {
+      targetParent.insertBefore(toolbar, insertBeforeEl);
+    } else {
+      targetParent.appendChild(toolbar);
+    }
+
+    toolbar.querySelector('#zapfilter-btn-open-kanban').onclick = function(e) {
+      e.preventDefault();
+      openKanban();
+    };
+
+    toolbar.querySelectorAll('.zapfilter-btn').forEach(btn => {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        toolbar.querySelectorAll('.zapfilter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.getAttribute('data-filter');
+        applyActiveFilter();
+      };
+    });
+
+    const syncBtn = toolbar.querySelector('#zapfilter-btn-sync');
+    if (syncBtn) {
+      syncBtn.onclick = function(e) {
+        e.preventDefault();
+        applyActiveFilter();
+      };
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeKanban();
+      }
+    });
+
+    applyActiveFilter();
+  }
+
+  /* --------------------------------------------------------------------------
+     Observador e Inicialização
+     -------------------------------------------------------------------------- */
+  function startWatcher() {
+    if (observer) observer.disconnect();
+
+    observer = new MutationObserver(() => {
+      if (!document.querySelector('#zapfilter-container')) {
+        injectMainHeader();
+      }
+      applyActiveFilter();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    injectMainHeader();
+    applyActiveFilter();
+  }
+
+  const initInterval = setInterval(() => {
+    const side = document.querySelector('#side') || document.querySelector('#pane-side');
+    if (side) {
+      injectMainHeader();
+      startWatcher();
+      clearInterval(initInterval);
+    }
+  }, 400);
+
+  setTimeout(() => clearInterval(initInterval), 30000);
+
+})();

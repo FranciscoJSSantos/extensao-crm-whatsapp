@@ -1,0 +1,877 @@
+/* ==========================================================================
+   ZapFilter CRM Pro - Fullscreen Kanban + Modal de Conversa Integrado
+   ========================================================================== */
+
+:root {
+  --zap-font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  --zap-primary: #00a884;
+  --zap-primary-hover: #029070;
+  --zap-primary-glow: rgba(0, 168, 132, 0.25);
+  
+  --zap-bg: #0b141a;
+  --zap-surface: #111b21;
+  --zap-surface-card: #182229;
+  --zap-surface-card-hover: #202c33;
+  --zap-column-bg: rgba(24, 34, 41, 0.85);
+  --zap-border: rgba(134, 150, 160, 0.15);
+  --zap-border-hover: rgba(0, 168, 132, 0.4);
+  
+  --zap-text-main: #f0f2f5;
+  --zap-text-muted: #8696a0;
+  --zap-text-dim: #667781;
+  
+  --zap-radius-sm: 6px;
+  --zap-radius-md: 10px;
+  --zap-radius-lg: 14px;
+  --zap-transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --------------------------------------------------------------------------
+   Barra Superior de Filtros Rápidos
+   -------------------------------------------------------------------------- */
+#zapfilter-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px 12px !important;
+  background-color: var(--background-default, #111b21) !important;
+  border-bottom: 1px solid var(--border-list, rgba(134, 150, 160, 0.12)) !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  user-select: none !important;
+  position: relative !important;
+  z-index: 99 !important;
+}
+
+#zapfilter-container::-webkit-scrollbar {
+  display: none !important;
+}
+
+.zapfilter-kanban-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  border-radius: 9999px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  font-family: var(--zap-font) !important;
+  background: linear-gradient(135deg, #00a884 0%, #0d7063 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0, 168, 132, 0.3) !important;
+  transition: var(--zap-transition) !important;
+  flex-shrink: 0 !important;
+}
+
+.zapfilter-kanban-toggle:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 168, 132, 0.45) !important;
+}
+
+.zapfilter-kanban-toggle svg {
+  width: 14px !important;
+  height: 14px !important;
+  fill: #ffffff !important;
+}
+
+.zapfilter-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 6px 12px !important;
+  border-radius: 9999px !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  font-family: var(--zap-font) !important;
+  color: var(--secondary, #8696a0) !important;
+  background-color: var(--background-default-hover, #202c33) !important;
+  border: 1px solid rgba(134, 150, 160, 0.15) !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: var(--zap-transition) !important;
+  outline: none !important;
+  flex-shrink: 0 !important;
+}
+
+.zapfilter-btn:hover {
+  background-color: var(--background-default-active, #2a3942) !important;
+  color: var(--primary-strong, #f0f2f5) !important;
+}
+
+.zapfilter-btn.active {
+  background-color: rgba(0, 168, 132, 0.16) !important;
+  color: #00a884 !important;
+  border-color: rgba(0, 168, 132, 0.45) !important;
+  font-weight: 600 !important;
+}
+
+.zapfilter-btn svg {
+  width: 13px !important;
+  height: 13px !important;
+  fill: currentColor !important;
+}
+
+.zapfilter-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  padding: 0 5px !important;
+  border-radius: 9999px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  background-color: #25d366 !important;
+  color: #111b21 !important;
+  line-height: 1 !important;
+}
+
+.zapfilter-hidden-chat {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Quadro Kanban Fullscreen
+   -------------------------------------------------------------------------- */
+#zap-kanban-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: radial-gradient(circle at 50% 10%, rgba(17, 27, 33, 0.98), #080e12) !important;
+  backdrop-filter: blur(20px) !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  font-family: var(--zap-font) !important;
+  color: var(--zap-text-main) !important;
+  animation: zapFadeIn 0.2s ease-out !important;
+  overflow: hidden !important;
+}
+
+@keyframes zapFadeIn {
+  from { opacity: 0; transform: scale(0.995); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.zap-kanban-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px 24px !important;
+  background: rgba(17, 27, 33, 0.92) !important;
+  border-bottom: 1px solid var(--zap-border) !important;
+  backdrop-filter: blur(12px) !important;
+  z-index: 1000 !important;
+}
+
+.zap-kanban-brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.zap-brand-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: var(--zap-radius-md) !important;
+  background: linear-gradient(135deg, #00a884 0%, #128c7e 100%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 12px rgba(0, 168, 132, 0.3) !important;
+}
+
+.zap-brand-icon svg {
+  width: 20px !important;
+  height: 20px !important;
+  fill: #ffffff !important;
+}
+
+.zap-brand-text h2 {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #f0f2f5 !important;
+  margin: 0 !important;
+}
+
+.zap-brand-text p {
+  font-size: 11.5px !important;
+  color: var(--zap-text-muted) !important;
+  margin: 0 !important;
+}
+
+.zap-kanban-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.zap-search-box {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.zap-search-box input {
+  background: rgba(24, 34, 41, 0.9) !important;
+  border: 1px solid var(--zap-border) !important;
+  border-radius: 9999px !important;
+  padding: 7px 14px 7px 34px !important;
+  color: #f0f2f5 !important;
+  font-size: 13px !important;
+  outline: none !important;
+  width: 220px !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-search-box input:focus {
+  width: 280px !important;
+  border-color: var(--zap-primary) !important;
+}
+
+.zap-search-box svg {
+  position: absolute !important;
+  left: 12px !important;
+  width: 14px !important;
+  height: 14px !important;
+  fill: var(--zap-text-muted) !important;
+  pointer-events: none !important;
+}
+
+.zap-btn-ctrl {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f0f2f5 !important;
+  border: 1px solid var(--zap-border) !important;
+  padding: 8px 14px !important;
+  border-radius: var(--zap-radius-md) !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: var(--zap-transition) !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+}
+
+.zap-btn-ctrl:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.zap-btn-ctrl svg {
+  width: 14px !important;
+  height: 14px !important;
+  fill: currentColor !important;
+}
+
+.zap-btn-clear-replied {
+  background: rgba(0, 168, 132, 0.12) !important;
+  color: #00a884 !important;
+  border-color: rgba(0, 168, 132, 0.3) !important;
+}
+
+.zap-btn-clear-replied:hover {
+  background: #00a884 !important;
+  color: #111b21 !important;
+}
+
+.zap-btn-col-clear {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--zap-text-muted) !important;
+  border: 1px solid var(--zap-border) !important;
+  padding: 2px 7px !important;
+  border-radius: 6px !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-btn-col-clear:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.zap-btn-close-main {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.zap-btn-close-main:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Colunas do Board */
+.zap-kanban-board {
+  display: flex !important;
+  gap: 14px !important;
+  padding: 20px 24px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  flex: 1 !important;
+}
+
+.zap-kanban-board::-webkit-scrollbar {
+  height: 8px !important;
+}
+
+.zap-kanban-board::-webkit-scrollbar-thumb {
+  background: rgba(134, 150, 160, 0.2) !important;
+  border-radius: 4px !important;
+}
+
+.zap-kanban-col {
+  flex: 0 0 280px !important;
+  background: var(--zap-column-bg) !important;
+  border: 1px solid var(--zap-border) !important;
+  border-radius: var(--zap-radius-lg) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: 100% !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+}
+
+.zap-col-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--zap-border) !important;
+}
+
+.zap-col-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.zap-col-pill {
+  width: 9px !important;
+  height: 9px !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 8px currentColor !important;
+}
+
+.zap-col-title {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #f0f2f5 !important;
+}
+
+.zap-col-counter {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: var(--zap-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 2px 7px !important;
+  border-radius: 9999px !important;
+  border: 1px solid var(--zap-border) !important;
+}
+
+.zap-col-cardlist {
+  padding: 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  overflow-y: auto !important;
+  flex: 1 !important;
+}
+
+.zap-col-cardlist::-webkit-scrollbar {
+  width: 4px !important;
+}
+
+.zap-col-cardlist::-webkit-scrollbar-thumb {
+  background: rgba(134, 150, 160, 0.25) !important;
+  border-radius: 2px !important;
+}
+
+.zap-col-cardlist.is-dragover {
+  background: rgba(0, 168, 132, 0.08) !important;
+  border-radius: var(--zap-radius-md) !important;
+}
+
+/* Card de Contato */
+.zap-contact-card {
+  background: var(--zap-surface-card) !important;
+  border: 1px solid var(--zap-border) !important;
+  border-radius: var(--zap-radius-md) !important;
+  padding: 11px 13px !important;
+  cursor: pointer !important;
+  transition: var(--zap-transition) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  user-select: none !important;
+}
+
+.zap-contact-card:hover {
+  background: var(--zap-surface-card-hover) !important;
+  border-color: var(--zap-border-hover) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+.zap-contact-card.is-dragging {
+  opacity: 0.35 !important;
+  transform: scale(0.97) !important;
+}
+
+.zap-card-profile {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  overflow: hidden !important;
+}
+
+.zap-card-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.zap-card-avatar-fallback {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #00a884, #128c7e) !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  flex-shrink: 0 !important;
+}
+
+.zap-card-info {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.zap-card-name {
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #f0f2f5 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.zap-card-time {
+  font-size: 10px !important;
+  color: var(--zap-text-dim) !important;
+}
+
+/* Badge de Observação / Pendência Visual no Card */
+.zap-card-note-badge {
+  background: rgba(247, 162, 59, 0.12) !important;
+  border: 1px solid rgba(247, 162, 59, 0.35) !important;
+  color: #f7a23b !important;
+  padding: 5px 8px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 5px !important;
+}
+
+.zap-card-note-badge svg {
+  width: 12px !important;
+  height: 12px !important;
+  fill: currentColor !important;
+  flex-shrink: 0 !important;
+  margin-top: 1px !important;
+}
+
+.zap-card-message {
+  font-size: 11px !important;
+  color: var(--zap-text-muted) !important;
+  line-height: 1.3 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+  padding: 5px 7px !important;
+  border-radius: var(--zap-radius-sm) !important;
+}
+
+.zap-card-bottom {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-top: 2px !important;
+}
+
+.zap-card-badge-unread {
+  background-color: #25d366 !important;
+  color: #111b21 !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 2px 6px !important;
+  border-radius: 9999px !important;
+}
+
+.zap-card-badge-waiting {
+  background-color: rgba(247, 162, 59, 0.2) !important;
+  color: #f7a23b !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 2px 6px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(247, 162, 59, 0.4) !important;
+}
+
+.zap-card-open-btn {
+  background: rgba(0, 168, 132, 0.15) !important;
+  color: #00a884 !important;
+  border: 1px solid rgba(0, 168, 132, 0.35) !important;
+  padding: 4px 9px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  transition: var(--zap-transition) !important;
+  margin-left: auto !important;
+}
+
+.zap-card-open-btn svg {
+  width: 12px !important;
+  height: 12px !important;
+  fill: #00a884 !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-card-open-btn:hover {
+  background: #00a884 !important;
+  color: #111b21 !important;
+}
+
+.zap-card-open-btn:hover svg {
+  fill: #111b21 !important;
+}
+
+.zap-empty-col {
+  padding: 28px 12px !important;
+  text-align: center !important;
+  color: var(--zap-text-dim) !important;
+  font-size: 11.5px !important;
+  border: 1px dashed var(--zap-border) !important;
+  border-radius: var(--zap-radius-md) !important;
+  margin: 8px 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Modal / Popup de Conversa Integrado no Kanban
+   -------------------------------------------------------------------------- */
+#zap-chat-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(10px) !important;
+  z-index: 10000000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: zapFadeIn 0.2s ease-out !important;
+}
+
+.zap-modal-chatbox {
+  background: #111b21 !important;
+  border: 1px solid var(--zap-border) !important;
+  border-radius: var(--zap-radius-lg) !important;
+  width: 520px !important;
+  max-width: 92vw !important;
+  height: 600px !important;
+  max-height: 92vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6) !important;
+  overflow: hidden !important;
+}
+
+.zap-modal-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px 18px !important;
+  background: #202c33 !important;
+  border-bottom: 1px solid var(--zap-border) !important;
+}
+
+.zap-modal-user {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.zap-modal-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  background-color: #2a3942 !important;
+}
+
+.zap-modal-avatar-fallback {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #00a884, #128c7e) !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+}
+
+.zap-modal-title h3 {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #f0f2f5 !important;
+  margin: 0 !important;
+}
+
+.zap-modal-title p {
+  font-size: 11.5px !important;
+  color: #8696a0 !important;
+  margin: 0 !important;
+}
+
+.zap-modal-close-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f0f2f5 !important;
+  border: none !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  line-height: 1 !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-modal-close-btn:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.zap-modal-body {
+  flex: 1 !important;
+  padding: 16px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  background: #0b141a !important;
+}
+
+.zap-chat-bubble {
+  background: #202c33 !important;
+  color: #f0f2f5 !important;
+  padding: 12px 14px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  border-left: 4px solid #00a884 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+}
+
+.zap-chat-bubble-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #00a884 !important;
+  margin-bottom: 4px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Caixa de Observação / Pendência Visual */
+.zap-modal-note-box {
+  background: #182229 !important;
+  border: 1px solid rgba(247, 162, 59, 0.3) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.zap-modal-note-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.zap-modal-note-title {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #f7a23b !important;
+  text-transform: uppercase !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.zap-modal-note-title svg {
+  width: 13px !important;
+  height: 13px !important;
+  fill: currentColor !important;
+}
+
+.zap-modal-note-box textarea {
+  background: #111b21 !important;
+  color: #f0f2f5 !important;
+  border: 1px solid var(--zap-border) !important;
+  padding: 8px 10px !important;
+  border-radius: 6px !important;
+  font-size: 12.5px !important;
+  font-family: inherit !important;
+  outline: none !important;
+  resize: vertical !important;
+  min-height: 50px !important;
+}
+
+.zap-modal-note-box textarea:focus {
+  border-color: #f7a23b !important;
+}
+
+.zap-btn-clear-note {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-btn-clear-note:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.zap-btn-save-note {
+  background: rgba(247, 162, 59, 0.15) !important;
+  color: #f7a23b !important;
+  border: 1px solid rgba(247, 162, 59, 0.35) !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-btn-save-note:hover {
+  background: #f7a23b !important;
+  color: #111b21 !important;
+}
+
+.zap-modal-crm-box {
+  background: #182229 !important;
+  border: 1px solid var(--zap-border) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.zap-modal-crm-title {
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #8696a0 !important;
+  text-transform: uppercase !important;
+}
+
+.zap-modal-select-stage {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.zap-modal-select-stage label {
+  font-size: 12.5px !important;
+  color: #d1d7db !important;
+  white-space: nowrap !important;
+}
+
+.zap-modal-select-stage select {
+  background: #111b21 !important;
+  color: #f0f2f5 !important;
+  border: 1px solid var(--zap-border) !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  font-size: 12.5px !important;
+  outline: none !important;
+  width: 100% !important;
+  cursor: pointer !important;
+}
+
+.zap-modal-footer {
+  padding: 12px 16px !important;
+  background: #202c33 !important;
+  border-top: 1px solid var(--zap-border) !important;
+}
+
+.zap-btn-direct-wa {
+  background: #00a884 !important;
+  color: #111b21 !important;
+  border: none !important;
+  padding: 11px 16px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-btn-direct-wa:hover {
+  background: #029070 !important;
+}
+
+.zap-btn-direct-wa svg {
+  width: 16px !important;
+  height: 16px !important;
+  fill: #111b21 !important;
+}

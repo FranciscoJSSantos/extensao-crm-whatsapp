@@ -1,0 +1,15 @@
+# Dependências e caches
+node_modules/
+.npm/
+
+# Arquivos de empacotamento gerados
+*.crx
+*.pem
+zapfilter_whatsapp_crm.zip
+
+# Sistema Operacional e IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
