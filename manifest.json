@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ZapFilter - CRM e Filtros para WhatsApp Web™",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Filtros rápidos e CRM Kanban para WhatsApp Web™. Organize atendimentos, leads e conversas com facilidade.",
   "author": "Antigravity & Pair Developer",
   "icons": {
