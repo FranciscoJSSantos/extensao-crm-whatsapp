@@ -1067,56 +1067,42 @@
 }
 
 .zap-modal-footer {
-  padding: 12px 16px !important;
+  padding: 14px 18px !important;
   background: #202c33 !important;
   border-top: 1px solid var(--zap-border) !important;
 }
 
-.zap-modal-actions-grid {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 10px !important;
-}
-
-.zap-btn-action-wa {
+.zap-btn-direct-wa {
+  background: #00a884 !important;
+  color: #111b21 !important;
   border: none !important;
-  padding: 10px 14px !important;
+  padding: 12px 18px !important;
   border-radius: 8px !important;
-  font-size: 12.5px !important;
+  font-size: 13.5px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
   transition: var(--zap-transition) !important;
-  white-space: nowrap !important;
-}
-
-.zap-btn-action-wa svg {
-  width: 15px !important;
-  height: 15px !important;
-  fill: currentColor !important;
-}
-
-.zap-btn-attach-wa {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #f0f2f5 !important;
-  border: 1px solid var(--zap-border) !important;
-}
-
-.zap-btn-attach-wa:hover {
-  background: rgba(255, 255, 255, 0.16) !important;
-  color: #ffffff !important;
-}
-
-.zap-btn-direct-wa {
-  background: #00a884 !important;
-  color: #111b21 !important;
 }
 
 .zap-btn-direct-wa:hover {
   background: #029070 !important;
+}
+
+.zap-btn-direct-wa svg {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  fill: #111b21 !important;
+  display: inline-block !important;
 }
 
 /* --------------------------------------------------------------------------
