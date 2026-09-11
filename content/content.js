@@ -1,16 +1,19 @@
 /**
  * ZapFilter CRM Pro - Fullscreen Kanban + Modal de Conversa + Observações Visuais
+ * Performance ultra-otimizada: Debounce inteligente, zero layout thrashing e prevenção de congelamento.
  */
 
 (function () {
   'use strict';
 
-  console.log('[ZapFilter CRM Pro] 🚀 Inicializado com Falta Responder e Observações Visuais.');
+  console.log('[ZapFilter CRM Pro] 🚀 Inicializado com proteção de performance.');
 
   let currentFilter = 'all';
   let observer = null;
   let isFiltering = false;
   let searchQuery = '';
+  let filterDebounceTimer = null;
+  let isKeydownBound = false;
 
   // 5 Colunas do Kanban
   const COLUMNS = [
@@ -36,10 +39,9 @@
   };
 
   /* --------------------------------------------------------------------------
-     Análise e Extração de Conversas Reais (Sem Duplicatas)
+     Análise e Extração Rápida de Conversas (Sem Layout Thrashing)
      -------------------------------------------------------------------------- */
   function inspectChatItem(element) {
-    const text = (element.innerText || '').toLowerCase();
     const aria = (element.getAttribute('aria-label') || '').toLowerCase();
 
     // 1. Grupo (Todos os grupos ficam na coluna Grupo)
@@ -55,12 +57,14 @@
     let isUnread = !isGroup && (!!unreadEl || aria.includes('não lida') || aria.includes('unread'));
 
     if (!isUnread && !isGroup) {
+      // Checagem rápida de badges de contagem sem getComputedStyle
       const badges = element.querySelectorAll('span');
-      for (const badge of badges) {
+      for (let i = 0; i < badges.length; i++) {
+        const badge = badges[i];
         const val = badge.textContent.trim();
-        if (/^\d+$/.test(val) && val.length <= 4) {
-          const bg = window.getComputedStyle(badge).backgroundColor;
-          if (bg.includes('0, 168, 132') || bg.includes('37, 211, 102') || bg.includes('0, 128, 105')) {
+        if (/^\d{1,4}$/.test(val) && badge.children.length === 0) {
+          const parentAria = (badge.parentElement?.getAttribute('aria-label') || '').toLowerCase();
+          if (parentAria.includes('não lida') || parentAria.includes('unread') || badge.closest('[aria-label*="não lida"]')) {
             isUnread = true;
             break;
           }
@@ -74,8 +78,7 @@
     );
     const isReplied = !isGroup && hasSentCheck;
 
-    // Determina a coluna automática padrão:
-    // NOTA: 'Falta responder' (waiting) é 100% manual (só entra quem o usuário puxar/mover)
+    // Determina a coluna automática padrão
     let defaultCol = 'normal';
     if (isGroup) {
       defaultCol = 'groups';
@@ -136,7 +139,6 @@
         isUnread: info.isUnread,
         isGroup: info.isGroup,
         isReplied: info.isReplied,
-        isWaiting: info.isWaiting,
         defaultCol: info.defaultCol,
         domElement: row
       });
@@ -166,12 +168,10 @@
   }
 
   function getContactColumnMap(callback) {
-    // 1. Tenta carregar do localStorage imediatamente
     const localCols = getLocalData('zap_contact_columns') || {};
     const localNotes = getLocalData('zap_contact_notes') || {};
     const localArchived = getLocalData('zap_archived_replied') || [];
 
-    // 2. Sincroniza com o chrome.storage.local
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['zap_contact_columns', 'zap_contact_notes', 'zap_archived_replied'], (res) => {
         const mergedCols = { ...localCols, ...(res.zap_contact_columns || {}) };
@@ -191,7 +191,6 @@
   function setContactColumn(contactName, columnId, callback) {
     getContactColumnMap((map, notes, archived) => {
       map[contactName] = columnId;
-      // Se mover manualmente para outra coluna, remove do arquivado
       const updatedArchived = archived.filter(name => name !== contactName);
       
       setLocalData('zap_contact_columns', map);
@@ -242,12 +241,19 @@
   }
 
   /* --------------------------------------------------------------------------
-     Filtros Rápidos na Barra Superior
+     Filtros Rápidos na Barra Superior (Com Debounce & Proteção de Loop)
      -------------------------------------------------------------------------- */
   function getChatListContainer() {
     return document.querySelector('#pane-side') ||
            document.querySelector('div[data-testid="chat-list"]') ||
            document.querySelector('div[role="grid"]');
+  }
+
+  function debouncedApplyFilter(delay = 120) {
+    if (filterDebounceTimer) clearTimeout(filterDebounceTimer);
+    filterDebounceTimer = setTimeout(() => {
+      applyActiveFilter();
+    }, delay);
   }
 
   function applyActiveFilter() {
@@ -256,10 +262,7 @@
 
     try {
       const container = getChatListContainer();
-      if (!container) {
-        isFiltering = false;
-        return;
-      }
+      if (!container) return;
 
       let chatRows = container.querySelectorAll('div[role="listitem"], div[role="row"], div[data-testid="cell-frame-container"]');
       if (!chatRows || chatRows.length === 0) {
@@ -269,31 +272,48 @@
 
       let unreadCount = 0;
 
-      Array.from(chatRows).forEach(row => {
-        if (row.id === 'zapfilter-container' || row.closest('#zapfilter-container')) return;
-
-        const info = inspectChatItem(row);
-        if (info.isUnread) unreadCount++;
-
-        let show = true;
-        if (currentFilter === 'groups') {
-          show = info.isGroup;
-        } else if (currentFilter === 'unread') {
-          show = info.isUnread;
-        } else if (currentFilter === 'waiting') {
-          show = info.isWaiting;
-        } else if (currentFilter === 'replied') {
-          show = info.isReplied;
-        } else if (currentFilter === 'normal') {
-          show = !info.isGroup;
+      // Se o filtro for 'all', remove classes de ocultação rapidamente
+      if (currentFilter === 'all') {
+        for (let i = 0; i < chatRows.length; i++) {
+          const row = chatRows[i];
+          if (row.classList && row.classList.contains('zapfilter-hidden-chat')) {
+            row.classList.remove('zapfilter-hidden-chat');
+          }
+          const info = inspectChatItem(row);
+          if (info.isUnread) unreadCount++;
         }
+      } else {
+        for (let i = 0; i < chatRows.length; i++) {
+          const row = chatRows[i];
+          if (row.id === 'zapfilter-container' || (row.closest && row.closest('#zapfilter-container'))) continue;
 
-        if (show) {
-          row.classList.remove('zapfilter-hidden-chat');
-        } else {
-          row.classList.add('zapfilter-hidden-chat');
+          const info = inspectChatItem(row);
+          if (info.isUnread) unreadCount++;
+
+          let show = true;
+          if (currentFilter === 'groups') {
+            show = info.isGroup;
+          } else if (currentFilter === 'unread') {
+            show = info.isUnread;
+          } else if (currentFilter === 'waiting') {
+            show = false; // Waiting é gerenciado via kanban
+          } else if (currentFilter === 'replied') {
+            show = info.isReplied;
+          } else if (currentFilter === 'normal') {
+            show = !info.isGroup;
+          }
+
+          if (show) {
+            if (row.classList && row.classList.contains('zapfilter-hidden-chat')) {
+              row.classList.remove('zapfilter-hidden-chat');
+            }
+          } else {
+            if (row.classList && !row.classList.contains('zapfilter-hidden-chat')) {
+              row.classList.add('zapfilter-hidden-chat');
+            }
+          }
         }
-      });
+      }
 
       const badge = document.querySelector('#zapfilter-btn-unread .zapfilter-badge');
       if (badge) {
@@ -305,7 +325,7 @@
         }
       }
     } catch (err) {
-      console.warn('[ZapFilter] Erro ao filtrar:', err);
+      console.warn('[ZapFilter] Aviso ao filtrar:', err);
     } finally {
       isFiltering = false;
     }
@@ -315,12 +335,8 @@
      Abertura e Foco no WhatsApp Web (Minimiza Kanban e Abre Chat Diretamente)
      -------------------------------------------------------------------------- */
   function openWhatsAppDirectly(contactName) {
-    console.log(`[ZapFilter] Abrindo conversa com "${contactName}" no WhatsApp...`);
-    
-    // 1. Fecha o Kanban e o Modal
     closeKanban();
 
-    // 2. Reseta os filtros visuais para garantir que a conversa não esteja com display:none
     currentFilter = 'all';
     document.querySelectorAll('.zapfilter-btn').forEach(b => {
       if (b.getAttribute('data-filter') === 'all') b.classList.add('active');
@@ -338,7 +354,7 @@
       for (const row of rows) {
         const titleEl = row.querySelector('span[title], div[title], [data-testid="cell-frame-title"] span');
         const name = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent.trim()) : '';
-        if (name === contactName || row.innerText.includes(contactName)) {
+        if (name === contactName || (row.innerText && row.innerText.includes(contactName))) {
           targetRow = row;
           break;
         }
@@ -347,7 +363,6 @@
       if (targetRow) {
         targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
-        // Simulação de clique real do React com coordenadas
         const clickTarget = targetRow.querySelector('div[role="button"]') || targetRow.querySelector('span[title]') || targetRow;
         const rect = clickTarget.getBoundingClientRect();
         const clientX = rect.left + rect.width / 2;
@@ -367,11 +382,7 @@
         ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(evt => {
           clickTarget.dispatchEvent(new MouseEvent(evt, eventOptions));
         });
-
-        console.log(`[ZapFilter] Conversa "${contactName}" clicada no DOM com sucesso.`);
       } else {
-        // Fallback: Se o chat estiver fora da rolagem virtual, usa a busca nativa do WhatsApp
-        console.log(`[ZapFilter] Chat "${contactName}" fora do viewport. Usando busca nativa...`);
         const searchInput = document.querySelector('div[contenteditable="true"][data-tab="3"]') ||
                             document.querySelector('#side div[contenteditable="true"]') ||
                             document.querySelector('div[data-testid="chat-list-search"] div[contenteditable="true"]');
@@ -397,10 +408,10 @@
                 }));
               });
             }
-          }, 400);
+          }, 350);
         }
       }
-    }, 120);
+    }, 100);
   }
 
   /* --------------------------------------------------------------------------
@@ -480,21 +491,18 @@
 
       modal.style.setProperty('display', 'flex', 'important');
 
-      // Fechar modal no botão X
       modal.querySelector('#zap-modal-close-btn').onclick = function(e) {
         e.preventDefault();
         e.stopPropagation();
         modal.style.setProperty('display', 'none', 'important');
       };
 
-      // Fechar clicando fora da caixa
       modal.onclick = function(e) {
         if (e.target === modal) {
           modal.style.setProperty('display', 'none', 'important');
         }
       };
 
-      // Salvar Observação
       const saveBtn = modal.querySelector('#zap-btn-save-note');
       const clearBtn = modal.querySelector('#zap-btn-clear-note');
       const noteInput = modal.querySelector('#zap-input-contact-note');
@@ -516,7 +524,6 @@
         });
       };
 
-      // Alterar coluna
       modal.querySelector('#zap-modal-col-select').onchange = function(e) {
         const newCol = e.target.value;
         setContactColumn(chat.name, newCol, () => {
@@ -524,7 +531,6 @@
         });
       };
 
-      // Abrir no WhatsApp
       modal.querySelector('#zap-modal-btn-open-wa').onclick = function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -560,7 +566,7 @@
 
   function refreshKanban() {
     const overlay = document.querySelector('#zap-kanban-overlay');
-    if (!overlay) return;
+    if (!overlay || overlay.style.display === 'none') return;
 
     const realChats = extractRealWhatsAppChats();
 
@@ -573,7 +579,6 @@
           columnId: columnMap[chat.name] || chat.defaultCol,
           note: notesMap[chat.name] || ''
         }))
-        // Oculta conversas que foram limpas da coluna Respondido (a menos que tenham sido movidas manualmente para outra coluna)
         .filter(card => {
           if (card.columnId === 'replied' && archivedSet.has(card.name)) {
             return false;
@@ -609,7 +614,7 @@
         <div class="zap-kanban-controls">
           <div class="zap-search-box">
             ${ICONS.search}
-            <input type="text" id="zap-kb-search" placeholder="Buscar nas conversas ou notas..." value="${searchQuery}">
+            <input type="text" id="zap-kb-search" placeholder="Buscar nas conversas ou notas..." value="${escapeHtml(searchQuery)}">
           </div>
 
           <button class="zap-btn-ctrl" id="zap-kb-btn-refresh" title="Atualizar">
@@ -679,8 +684,6 @@
                     <div class="zap-card-bottom">
                       ${c.isUnread ? `
                         <span class="zap-card-badge-unread">Não lida</span>
-                      ` : c.isWaiting ? `
-                        <span class="zap-card-badge-waiting">Pendente</span>
                       ` : `<span></span>`}
 
                       <button class="zap-card-open-btn" data-contact-name="${escapeHtml(c.name)}">
@@ -697,7 +700,6 @@
       </div>
     `;
 
-    // Botão Fechar Kanban
     const closeBtn = overlay.querySelector('#zap-kb-btn-close');
     if (closeBtn) {
       closeBtn.onclick = function(e) {
@@ -716,7 +718,6 @@
       };
     }
 
-    // Botão Limpar Respondidos
     const clearRepliedAction = function(e) {
       e.preventDefault();
       e.stopPropagation();
@@ -747,7 +748,6 @@
       };
     }
 
-    // Clique no Card ou no botão "Ver Conversa" abre o Modal Popup
     overlay.querySelectorAll('.zap-contact-card').forEach(card => {
       card.onclick = function(e) {
         e.preventDefault();
@@ -899,35 +899,56 @@
       };
     }
 
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closeKanban();
-      }
-    });
+    if (!isKeydownBound) {
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeKanban();
+        }
+      });
+      isKeydownBound = true;
+    }
 
-    applyActiveFilter();
+    debouncedApplyFilter(50);
   }
 
   /* --------------------------------------------------------------------------
-     Observador e Inicialização
+     Observador Inteligente de DOM (Alvo Específico + Anti-Freeze)
      -------------------------------------------------------------------------- */
   function startWatcher() {
     if (observer) observer.disconnect();
 
-    observer = new MutationObserver(() => {
-      if (!document.querySelector('#zapfilter-container')) {
+    const targetNode = document.querySelector('#side') || document.querySelector('#pane-side') || document.body;
+
+    observer = new MutationObserver((mutations) => {
+      let shouldFilter = false;
+      let shouldInject = false;
+
+      for (let i = 0; i < mutations.length; i++) {
+        const m = mutations[i];
+        
+        // Ignora mutações geradas pelos nossos próprios componentes
+        if (m.target && m.target.id && (m.target.id === 'zap-kanban-overlay' || m.target.id === 'zap-chat-modal' || m.target.id === 'zapfilter-container')) {
+          continue;
+        }
+
+        if (!document.querySelector('#zapfilter-container')) {
+          shouldInject = true;
+        }
+        shouldFilter = true;
+      }
+
+      if (shouldInject) {
         injectMainHeader();
       }
-      applyActiveFilter();
+      if (shouldFilter) {
+        debouncedApplyFilter(200);
+      }
     });
 
-    observer.observe(document.body, {
+    observer.observe(targetNode, {
       childList: true,
       subtree: true
     });
-
-    injectMainHeader();
-    applyActiveFilter();
   }
 
   const initInterval = setInterval(() => {
@@ -939,6 +960,6 @@
     }
   }, 400);
 
-  setTimeout(() => clearInterval(initInterval), 30000);
+  setTimeout(() => clearInterval(initInterval), 20000);
 
 })();
