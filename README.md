@@ -40,3 +40,18 @@ Extensão completa para Google Chrome e Microsoft Edge (Manifest V3) que transfo
    d:\Empresa\extensao_whatsapp
    ```
 5. Abra ou dê **F5** na página do [WhatsApp Web](https://web.whatsapp.com).
+
+---
+
+## 🔒 Política de Privacidade & Segurança
+
+- **100% Local**: Todos os dados do Kanban, filtros e configurações são salvos exclusivamente no armazenamento local do seu navegador (`chrome.storage.local`).
+- **Privacidade Total**: Não coletamos, não lemos e não transmitimos nenhum dado ou mensagem para servidores externos.
+- Para conferir os termos completos, acesse nossa [Política de Privacidade](PRIVACY_POLICY.md).
+
+---
+
+## ⚖️ Aviso Legal (Disclaimer)
+
+*WhatsApp é uma marca comercial registrada da Meta Platforms, Inc. O ZapFilter é um projeto independente de produtividade e organização pessoal, não possuindo qualquer vínculo, afiliação, patrocínio ou endosso por parte da Meta Platforms Inc. ou do WhatsApp.*
+
