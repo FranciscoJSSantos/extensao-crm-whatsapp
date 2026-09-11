@@ -53,7 +53,9 @@
     plus: `<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`,
     edit: `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
     trash: `<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`,
-    restore: `<svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>`
+    restore: `<svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>`,
+    arrowLeft: `<svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>`,
+    arrowRight: `<svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>`
   };
 
   /* --------------------------------------------------------------------------
@@ -155,6 +157,21 @@
         }
         saveKanbanColumns(updated, callback);
       });
+    });
+  }
+
+  function moveColumn(columnId, direction, callback) {
+    getKanbanColumns((cols) => {
+      const idx = cols.findIndex(c => c.id === columnId);
+      if (idx === -1) return;
+      const targetIdx = direction === 'left' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= cols.length) return;
+
+      const temp = cols[idx];
+      cols[idx] = cols[targetIdx];
+      cols[targetIdx] = temp;
+
+      saveKanbanColumns(cols, callback);
     });
   }
 
@@ -849,7 +866,7 @@
       </header>
 
       <div class="zap-kanban-board">
-        ${columns.map(col => {
+        ${columns.map((col, idx) => {
           const colCards = filteredCards.filter(c => c.columnId === col.id);
           const isDefault = !!col.isDefault;
 
@@ -860,7 +877,17 @@
                   <span class="zap-col-pill" style="background-color: ${col.color};"></span>
                   <span class="zap-col-title" title="${escapeHtml(col.name)}">${escapeHtml(col.name)}</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 5px;">
+                <div style="display: flex; align-items: center; gap: 3px;">
+                  ${idx > 0 ? `
+                    <button class="zap-col-action-btn zap-col-btn-move-left" data-col-id="${col.id}" title="Mover para a esquerda">
+                      ${ICONS.arrowLeft}
+                    </button>
+                  ` : ''}
+                  ${idx < columns.length - 1 ? `
+                    <button class="zap-col-action-btn zap-col-btn-move-right" data-col-id="${col.id}" title="Mover para a direita">
+                      ${ICONS.arrowRight}
+                    </button>
+                  ` : ''}
                   <button class="zap-col-action-btn zap-col-btn-edit" data-col-id="${col.id}" title="Renomear ou mudar cor da coluna">
                     ${ICONS.edit}
                   </button>
@@ -955,6 +982,29 @@
           openColumnEditorModal();
         };
       }
+    });
+
+    // Botões Mover Coluna (Esquerda / Direita)
+    overlay.querySelectorAll('.zap-col-btn-move-left').forEach(btn => {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const colId = btn.getAttribute('data-col-id');
+        moveColumn(colId, 'left', () => {
+          refreshKanban();
+        });
+      };
+    });
+
+    overlay.querySelectorAll('.zap-col-btn-move-right').forEach(btn => {
+      btn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const colId = btn.getAttribute('data-col-id');
+        moveColumn(colId, 'right', () => {
+          refreshKanban();
+        });
+      };
     });
 
     // Botão Editar Coluna
