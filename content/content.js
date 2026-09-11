@@ -1108,10 +1108,11 @@
     return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  function setupKanbanDragAndDrop(overlay) {
-    let draggedContactName = null;
-    let draggedColumnId = null;
+  let activeDragType = null; // 'column' | 'card'
+  let activeDragColId = null;
+  let activeDragContactName = null;
 
+  function setupKanbanDragAndDrop(overlay) {
     // 1. Drag & Drop de Colunas Inteiras
     overlay.querySelectorAll('.zap-col-head').forEach(headEl => {
       const colEl = headEl.closest('.zap-kanban-col');
@@ -1122,28 +1123,34 @@
           e.preventDefault();
           return;
         }
-        draggedColumnId = colId;
-        draggedContactName = null;
+        activeDragType = 'column';
+        activeDragColId = colId;
+        activeDragContactName = null;
+
         if (colEl) colEl.classList.add('is-col-dragging');
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', 'col:' + colId);
+        e.dataTransfer.setData('text/plain', 'column:' + colId);
       });
 
       headEl.addEventListener('dragend', () => {
-        draggedColumnId = null;
+        activeDragType = null;
+        activeDragColId = null;
         if (colEl) colEl.classList.remove('is-col-dragging');
         overlay.querySelectorAll('.zap-kanban-col').forEach(c => c.classList.remove('is-col-dragover'));
       });
     });
 
+    // Zona de Drop de Colunas
     overlay.querySelectorAll('.zap-kanban-col').forEach(targetColEl => {
       const targetColId = targetColEl.getAttribute('data-col-id');
 
       targetColEl.addEventListener('dragover', (e) => {
-        if (draggedColumnId && draggedColumnId !== targetColId) {
+        if (activeDragType === 'column') {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
-          targetColEl.classList.add('is-col-dragover');
+          if (activeDragColId && activeDragColId !== targetColId) {
+            targetColEl.classList.add('is-col-dragover');
+          }
         }
       });
 
@@ -1154,23 +1161,28 @@
       });
 
       targetColEl.addEventListener('drop', (e) => {
-        if (draggedColumnId && targetColId && draggedColumnId !== targetColId) {
+        if (activeDragType === 'column' && activeDragColId && targetColId) {
           e.preventDefault();
           e.stopPropagation();
           targetColEl.classList.remove('is-col-dragover');
 
-          getKanbanColumns((cols) => {
-            const fromIdx = cols.findIndex(c => c.id === draggedColumnId);
-            const toIdx = cols.findIndex(c => c.id === targetColId);
-            if (fromIdx !== -1 && toIdx !== -1) {
-              const [movedCol] = cols.splice(fromIdx, 1);
-              cols.splice(toIdx, 0, movedCol);
-              draggedColumnId = null;
-              saveKanbanColumns(cols, () => {
-                refreshKanban();
-              });
-            }
-          });
+          const sourceId = activeDragColId;
+          activeDragType = null;
+          activeDragColId = null;
+
+          if (sourceId !== targetColId) {
+            getKanbanColumns((cols) => {
+              const fromIdx = cols.findIndex(c => c.id === sourceId);
+              const toIdx = cols.findIndex(c => c.id === targetColId);
+              if (fromIdx !== -1 && toIdx !== -1) {
+                const [movedCol] = cols.splice(fromIdx, 1);
+                cols.splice(toIdx, 0, movedCol);
+                saveKanbanColumns(cols, () => {
+                  refreshKanban();
+                });
+              }
+            });
+          }
         }
       });
     });
@@ -1178,44 +1190,57 @@
     // 2. Drag & Drop de Cards de Contatos
     overlay.querySelectorAll('.zap-contact-card').forEach(cardEl => {
       cardEl.addEventListener('dragstart', (e) => {
-        draggedContactName = cardEl.getAttribute('data-contact-name');
-        draggedColumnId = null;
+        activeDragType = 'card';
+        activeDragContactName = cardEl.getAttribute('data-contact-name');
+        activeDragColId = null;
+
         cardEl.classList.add('is-dragging');
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', 'contact:' + draggedContactName);
+        e.dataTransfer.setData('text/plain', 'contact:' + activeDragContactName);
       });
 
       cardEl.addEventListener('dragend', () => {
+        activeDragType = null;
+        activeDragContactName = null;
         cardEl.classList.remove('is-dragging');
+        overlay.querySelectorAll('.zap-col-cardlist').forEach(cl => cl.classList.remove('is-dragover'));
       });
     });
 
-    overlay.querySelectorAll('.zap-col-cardlist').forEach(colEl => {
-      colEl.addEventListener('dragover', (e) => {
-        if (draggedContactName) {
+    overlay.querySelectorAll('.zap-col-cardlist').forEach(colListEl => {
+      const targetColId = colListEl.getAttribute('data-col-id');
+
+      colListEl.addEventListener('dragover', (e) => {
+        if (activeDragType === 'card') {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
-          colEl.classList.add('is-dragover');
+          colListEl.classList.add('is-dragover');
+        } else if (activeDragType === 'column') {
+          // Permite que o drag da coluna passe por cima da lista sem travar
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
         }
       });
 
-      colEl.addEventListener('dragleave', () => {
-        colEl.classList.remove('is-dragover');
+      colListEl.addEventListener('dragleave', (e) => {
+        if (!colListEl.contains(e.relatedTarget)) {
+          colListEl.classList.remove('is-dragover');
+        }
       });
 
-      colEl.addEventListener('drop', (e) => {
-        if (draggedContactName) {
+      colListEl.addEventListener('drop', (e) => {
+        if (activeDragType === 'card' && activeDragContactName && targetColId) {
           e.preventDefault();
           e.stopPropagation();
-          colEl.classList.remove('is-dragover');
-          const targetColId = colEl.getAttribute('data-col-id');
+          colListEl.classList.remove('is-dragover');
 
-          if (targetColId) {
-            setContactColumn(draggedContactName, targetColId, () => {
-              draggedContactName = null;
-              refreshKanban();
-            });
-          }
+          const contactName = activeDragContactName;
+          activeDragType = null;
+          activeDragContactName = null;
+
+          setContactColumn(contactName, targetColId, () => {
+            refreshKanban();
+          });
         }
       });
     });
