@@ -875,3 +875,260 @@
   height: 16px !important;
   fill: #111b21 !important;
 }
+
+/* --------------------------------------------------------------------------
+   Gestão Dinâmica de Colunas (Criar, Editar, Excluir e Cores)
+   -------------------------------------------------------------------------- */
+.zap-btn-add-col {
+  background: linear-gradient(135deg, rgba(0, 168, 132, 0.25) 0%, rgba(83, 189, 235, 0.25) 100%) !important;
+  color: #53bdeb !important;
+  border-color: rgba(83, 189, 235, 0.4) !important;
+}
+
+.zap-btn-add-col:hover {
+  background: linear-gradient(135deg, #00a884 0%, #53bdeb 100%) !important;
+  color: #111b21 !important;
+  border-color: transparent !important;
+}
+
+.zap-btn-restore {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--zap-text-dim) !important;
+  border-color: var(--zap-border) !important;
+}
+
+.zap-btn-restore:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #f0f2f5 !important;
+}
+
+.zap-col-action-btn {
+  background: transparent !important;
+  color: var(--zap-text-dim) !important;
+  border: none !important;
+  padding: 4px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: var(--zap-transition) !important;
+  opacity: 0.6 !important;
+}
+
+.zap-col-action-btn:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f0f2f5 !important;
+}
+
+.zap-col-btn-delete:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+.zap-col-action-btn svg {
+  width: 12px !important;
+  height: 12px !important;
+  fill: currentColor !important;
+}
+
+.zap-add-col-card {
+  flex: 0 0 240px !important;
+  min-height: 200px !important;
+  border: 2px dashed rgba(134, 150, 160, 0.25) !important;
+  border-radius: var(--zap-radius-lg) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: var(--zap-transition) !important;
+  user-select: none !important;
+}
+
+.zap-add-col-card:hover {
+  border-color: #53bdeb !important;
+  background: rgba(83, 189, 235, 0.05) !important;
+  transform: translateY(-2px) !important;
+}
+
+.zap-add-col-inner {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: var(--zap-text-muted) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.zap-add-col-card:hover .zap-add-col-inner {
+  color: #53bdeb !important;
+}
+
+.zap-add-col-inner svg {
+  width: 24px !important;
+  height: 24px !important;
+  fill: currentColor !important;
+}
+
+/* Modal de Criação / Edição de Coluna */
+#zap-col-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(11, 20, 26, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  z-index: 10000001 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: var(--zap-font) !important;
+}
+
+.zap-col-modal-box {
+  background: #111b21 !important;
+  border: 1px solid var(--zap-border) !important;
+  border-radius: 12px !important;
+  width: 380px !important;
+  max-width: 90vw !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  animation: zapModalPop 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.zap-col-modal-header {
+  padding: 14px 18px !important;
+  background: #202c33 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid var(--zap-border) !important;
+}
+
+.zap-col-modal-header h3 {
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  color: #f0f2f5 !important;
+  margin: 0 !important;
+}
+
+.zap-col-modal-close {
+  background: none !important;
+  border: none !important;
+  color: var(--zap-text-muted) !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+}
+
+.zap-col-modal-close:hover {
+  color: #f0f2f5 !important;
+}
+
+.zap-col-modal-body {
+  padding: 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.zap-col-form-group {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.zap-col-form-group label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #8696a0 !important;
+  text-transform: uppercase !important;
+}
+
+.zap-col-form-group input {
+  background: #182229 !important;
+  color: #f0f2f5 !important;
+  border: 1px solid var(--zap-border) !important;
+  padding: 10px 12px !important;
+  border-radius: 8px !important;
+  font-size: 13.5px !important;
+  outline: none !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-col-form-group input:focus {
+  border-color: #53bdeb !important;
+}
+
+.zap-color-picker-palette {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 8px !important;
+}
+
+.zap-color-swatch {
+  height: 32px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: var(--zap-transition) !important;
+  border: 2px solid transparent !important;
+  box-sizing: border-box !important;
+}
+
+.zap-color-swatch:hover {
+  transform: scale(1.1) !important;
+}
+
+.zap-color-swatch.active {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(255,255,255,0.4) !important;
+  transform: scale(1.08) !important;
+}
+
+.zap-col-modal-footer {
+  padding: 12px 18px !important;
+  background: #202c33 !important;
+  border-top: 1px solid var(--zap-border) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.zap-btn-modal-cancel {
+  background: transparent !important;
+  color: var(--zap-text-muted) !important;
+  border: 1px solid var(--zap-border) !important;
+  padding: 8px 14px !important;
+  border-radius: 6px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+.zap-btn-modal-cancel:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f0f2f5 !important;
+}
+
+.zap-btn-modal-save {
+  background: #00a884 !important;
+  color: #111b21 !important;
+  border: none !important;
+  padding: 8px 16px !important;
+  border-radius: 6px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-btn-modal-save:hover {
+  background: #029070 !important;
+}
+
