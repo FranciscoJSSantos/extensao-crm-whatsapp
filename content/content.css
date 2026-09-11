@@ -699,6 +699,67 @@
   margin: 0 !important;
 }
 
+.zap-modal-chatbox {
+  background: #111b21 !important;
+  border: 1px solid var(--zap-border) !important;
+  border-radius: 12px !important;
+  width: 500px !important;
+  max-width: 92vw !important;
+  max-height: 88vh !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  animation: zapModalPop 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.zap-modal-header {
+  padding: 14px 18px !important;
+  background: #202c33 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid var(--zap-border) !important;
+}
+
+.zap-modal-user {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  overflow: hidden !important;
+}
+
+.zap-modal-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+}
+
+.zap-modal-avatar-fallback {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: #6b7c85 !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+}
+
+.zap-modal-title h3 {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #f0f2f5 !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 320px !important;
+}
+
 .zap-modal-title p {
   font-size: 11.5px !important;
   color: #8696a0 !important;
@@ -728,28 +789,156 @@
   overflow-y: auto !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 12px !important;
+  gap: 14px !important;
   background: #0b141a !important;
 }
 
-.zap-chat-bubble {
-  background: #202c33 !important;
-  color: #f0f2f5 !important;
-  padding: 12px 14px !important;
-  border-radius: 10px !important;
-  font-size: 13px !important;
-  line-height: 1.4 !important;
-  border-left: 4px solid #00a884 !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
-}
-
-.zap-chat-bubble-label {
+.zap-modal-section-title {
   font-size: 11px !important;
   font-weight: 700 !important;
-  color: #00a884 !important;
-  margin-bottom: 4px !important;
+  color: #8696a0 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-bottom: 6px !important;
+}
+
+.zap-modal-section-title svg {
+  width: 13px !important;
+  height: 13px !important;
+  fill: currentColor !important;
+}
+
+/* Balões de Conversa */
+.zap-modal-chat-section {
+  background: rgba(17, 27, 33, 0.7) !important;
+  border: 1px solid var(--zap-border) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+}
+
+.zap-chat-bubbles-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  max-height: 160px !important;
+  overflow-y: auto !important;
+  padding-right: 4px !important;
+}
+
+.zap-bubble {
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  max-width: 85% !important;
+  position: relative !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25) !important;
+}
+
+.zap-bubble-in {
+  background: #202c33 !important;
+  color: #f0f2f5 !important;
+  align-self: flex-start !important;
+  border-top-left-radius: 2px !important;
+}
+
+.zap-bubble-out {
+  background: #005c4b !important;
+  color: #e9edef !important;
+  align-self: flex-end !important;
+  border-top-right-radius: 2px !important;
+}
+
+.zap-bubble-label {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #00a884 !important;
+  margin-bottom: 2px !important;
+  text-transform: uppercase !important;
+}
+
+.zap-bubble-text {
+  word-break: break-word !important;
+}
+
+.zap-bubble-time {
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  text-align: right !important;
+  margin-top: 4px !important;
+}
+
+/* Caixa de Envio Rápido de Mensagem */
+.zap-modal-quick-send-box {
+  background: #182229 !important;
+  border: 1px solid rgba(0, 168, 132, 0.3) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.zap-quick-send-input-wrap {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: flex-end !important;
+}
+
+.zap-quick-send-input-wrap textarea {
+  background: #111b21 !important;
+  color: #f0f2f5 !important;
+  border: 1px solid var(--zap-border) !important;
+  padding: 9px 12px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-family: inherit !important;
+  outline: none !important;
+  resize: none !important;
+  flex: 1 !important;
+  height: 48px !important;
+  transition: var(--zap-transition) !important;
+}
+
+.zap-quick-send-input-wrap textarea:focus {
+  border-color: #00a884 !important;
+}
+
+.zap-btn-quick-send {
+  background: #00a884 !important;
+  color: #111b21 !important;
+  border: none !important;
+  padding: 12px 16px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  height: 48px !important;
+  transition: var(--zap-transition) !important;
+  white-space: nowrap !important;
+}
+
+.zap-btn-quick-send:hover {
+  background: #029070 !important;
+  transform: translateY(-1px) !important;
+}
+
+.zap-btn-quick-send svg {
+  width: 14px !important;
+  height: 14px !important;
+  fill: currentColor !important;
+}
+
+.zap-quick-send-status {
+  font-size: 11.5px !important;
+  color: #25d366 !important;
+  margin-top: 6px !important;
+  font-weight: 600 !important;
 }
 
 /* Caixa de Observação / Pendência Visual */
@@ -770,7 +959,7 @@
 }
 
 .zap-modal-note-title {
-  font-size: 11.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   color: #f7a23b !important;
   text-transform: uppercase !important;
@@ -795,7 +984,7 @@
   font-family: inherit !important;
   outline: none !important;
   resize: vertical !important;
-  min-height: 50px !important;
+  min-height: 44px !important;
 }
 
 .zap-modal-note-box textarea:focus {
@@ -847,7 +1036,7 @@
 }
 
 .zap-modal-crm-title {
-  font-size: 11.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   color: #8696a0 !important;
   text-transform: uppercase !important;
@@ -883,31 +1072,51 @@
   border-top: 1px solid var(--zap-border) !important;
 }
 
-.zap-btn-direct-wa {
-  background: #00a884 !important;
-  color: #111b21 !important;
+.zap-modal-actions-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+.zap-btn-action-wa {
   border: none !important;
-  padding: 11px 16px !important;
+  padding: 10px 14px !important;
   border-radius: 8px !important;
-  font-size: 13px !important;
+  font-size: 12.5px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
-  width: 100% !important;
   transition: var(--zap-transition) !important;
+  white-space: nowrap !important;
+}
+
+.zap-btn-action-wa svg {
+  width: 15px !important;
+  height: 15px !important;
+  fill: currentColor !important;
+}
+
+.zap-btn-attach-wa {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f0f2f5 !important;
+  border: 1px solid var(--zap-border) !important;
+}
+
+.zap-btn-attach-wa:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.zap-btn-direct-wa {
+  background: #00a884 !important;
+  color: #111b21 !important;
 }
 
 .zap-btn-direct-wa:hover {
   background: #029070 !important;
-}
-
-.zap-btn-direct-wa svg {
-  width: 16px !important;
-  height: 16px !important;
-  fill: #111b21 !important;
 }
 
 /* --------------------------------------------------------------------------
