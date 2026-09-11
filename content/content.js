@@ -872,8 +872,9 @@
 
           return `
             <div class="zap-kanban-col" data-col-id="${col.id}">
-              <div class="zap-col-head">
+              <div class="zap-col-head" draggable="true" data-col-id="${col.id}">
                 <div class="zap-col-left">
+                  <span class="zap-col-drag-handle" title="Segure e arraste para reordenar a coluna">⋮⋮</span>
                   <span class="zap-col-pill" style="background-color: ${col.color};"></span>
                   <span class="zap-col-title" title="${escapeHtml(col.name)}">${escapeHtml(col.name)}</span>
                 </div>
@@ -1109,12 +1110,79 @@
 
   function setupKanbanDragAndDrop(overlay) {
     let draggedContactName = null;
+    let draggedColumnId = null;
 
+    // 1. Drag & Drop de Colunas Inteiras
+    overlay.querySelectorAll('.zap-col-head').forEach(headEl => {
+      const colEl = headEl.closest('.zap-kanban-col');
+      const colId = headEl.getAttribute('data-col-id');
+
+      headEl.addEventListener('dragstart', (e) => {
+        if (e.target.closest('.zap-col-action-btn') || e.target.closest('.zap-btn-col-clear')) {
+          e.preventDefault();
+          return;
+        }
+        draggedColumnId = colId;
+        draggedContactName = null;
+        if (colEl) colEl.classList.add('is-col-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'col:' + colId);
+      });
+
+      headEl.addEventListener('dragend', () => {
+        draggedColumnId = null;
+        if (colEl) colEl.classList.remove('is-col-dragging');
+        overlay.querySelectorAll('.zap-kanban-col').forEach(c => c.classList.remove('is-col-dragover'));
+      });
+    });
+
+    overlay.querySelectorAll('.zap-kanban-col').forEach(targetColEl => {
+      const targetColId = targetColEl.getAttribute('data-col-id');
+
+      targetColEl.addEventListener('dragover', (e) => {
+        if (draggedColumnId && draggedColumnId !== targetColId) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          targetColEl.classList.add('is-col-dragover');
+        }
+      });
+
+      targetColEl.addEventListener('dragleave', (e) => {
+        if (!targetColEl.contains(e.relatedTarget)) {
+          targetColEl.classList.remove('is-col-dragover');
+        }
+      });
+
+      targetColEl.addEventListener('drop', (e) => {
+        if (draggedColumnId && targetColId && draggedColumnId !== targetColId) {
+          e.preventDefault();
+          e.stopPropagation();
+          targetColEl.classList.remove('is-col-dragover');
+
+          getKanbanColumns((cols) => {
+            const fromIdx = cols.findIndex(c => c.id === draggedColumnId);
+            const toIdx = cols.findIndex(c => c.id === targetColId);
+            if (fromIdx !== -1 && toIdx !== -1) {
+              const [movedCol] = cols.splice(fromIdx, 1);
+              cols.splice(toIdx, 0, movedCol);
+              draggedColumnId = null;
+              saveKanbanColumns(cols, () => {
+                refreshKanban();
+              });
+            }
+          });
+        }
+      });
+    });
+
+    // 2. Drag & Drop de Cards de Contatos
     overlay.querySelectorAll('.zap-contact-card').forEach(cardEl => {
       cardEl.addEventListener('dragstart', (e) => {
         draggedContactName = cardEl.getAttribute('data-contact-name');
+        draggedColumnId = null;
         cardEl.classList.add('is-dragging');
         e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'contact:' + draggedContactName);
       });
 
       cardEl.addEventListener('dragend', () => {
@@ -1124,9 +1192,11 @@
 
     overlay.querySelectorAll('.zap-col-cardlist').forEach(colEl => {
       colEl.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        colEl.classList.add('is-dragover');
+        if (draggedContactName) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          colEl.classList.add('is-dragover');
+        }
       });
 
       colEl.addEventListener('dragleave', () => {
@@ -1134,14 +1204,18 @@
       });
 
       colEl.addEventListener('drop', (e) => {
-        e.preventDefault();
-        colEl.classList.remove('is-dragover');
-        const targetColId = colEl.getAttribute('data-col-id');
+        if (draggedContactName) {
+          e.preventDefault();
+          e.stopPropagation();
+          colEl.classList.remove('is-dragover');
+          const targetColId = colEl.getAttribute('data-col-id');
 
-        if (draggedContactName && targetColId) {
-          setContactColumn(draggedContactName, targetColId, () => {
-            refreshKanban();
-          });
+          if (targetColId) {
+            setContactColumn(draggedContactName, targetColId, () => {
+              draggedContactName = null;
+              refreshKanban();
+            });
+          }
         }
       });
     });

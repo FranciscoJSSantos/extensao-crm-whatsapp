@@ -348,6 +348,19 @@
   max-height: 100% !important;
   backdrop-filter: blur(8px) !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.zap-kanban-col.is-col-dragging {
+  opacity: 0.35 !important;
+  transform: scale(0.97) !important;
+  border: 2px dashed #53bdeb !important;
+}
+
+.zap-kanban-col.is-col-dragover {
+  border-color: #00a884 !important;
+  box-shadow: 0 0 16px rgba(0, 168, 132, 0.4) !important;
+  transform: translateY(-4px) scale(1.01) !important;
 }
 
 .zap-col-head {
@@ -356,6 +369,27 @@
   justify-content: space-between !important;
   padding: 12px 14px !important;
   border-bottom: 1px solid var(--zap-border) !important;
+  cursor: grab !important;
+  user-select: none !important;
+}
+
+.zap-col-head:active {
+  cursor: grabbing !important;
+}
+
+.zap-col-drag-handle {
+  color: var(--zap-text-dim) !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  margin-right: 2px !important;
+  opacity: 0.4 !important;
+  transition: var(--zap-transition) !important;
+  cursor: grab !important;
+}
+
+.zap-col-head:hover .zap-col-drag-handle {
+  opacity: 1 !important;
+  color: var(--zap-text-muted) !important;
 }
 
 .zap-col-left {
