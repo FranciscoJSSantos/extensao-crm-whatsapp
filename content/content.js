@@ -452,11 +452,13 @@
   }
 
   /* --------------------------------------------------------------------------
-     Abertura e Foco no WhatsApp Web
+     Abertura e Foco no WhatsApp Web (Blindado e Instantâneo)
      -------------------------------------------------------------------------- */
-  function openWhatsAppDirectly(contactName) {
+  function openWhatsAppDirectly(contactName, targetElement = null) {
+    console.log(`[ZapFilter] Abrindo conversa com "${contactName}"...`);
     closeKanban();
 
+    // 1. Reseta filtros para garantir visibilidade da lista
     currentFilter = 'all';
     document.querySelectorAll('.zapfilter-btn').forEach(b => {
       if (b.getAttribute('data-filter') === 'all') b.classList.add('active');
@@ -465,44 +467,60 @@
     document.querySelectorAll('.zapfilter-hidden-chat').forEach(el => el.classList.remove('zapfilter-hidden-chat'));
 
     setTimeout(() => {
-      const paneSide = document.querySelector('#pane-side') || document.querySelector('div[role="grid"]');
+      const paneSide = document.querySelector('#pane-side') || 
+                       document.querySelector('div[data-testid="chat-list"]') || 
+                       document.querySelector('div[role="grid"]');
       if (!paneSide) return;
 
-      const rows = paneSide.querySelectorAll('div[role="listitem"], div[role="row"], div[data-testid="cell-frame-container"]');
-      let targetRow = null;
+      let rowToClick = targetElement;
 
-      for (const row of rows) {
-        const titleEl = row.querySelector('span[title], div[title], [data-testid="cell-frame-title"] span');
-        const name = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent.trim()) : '';
-        if (name === contactName || (row.innerText && row.innerText.includes(contactName))) {
-          targetRow = row;
-          break;
+      if (!rowToClick || !document.body.contains(rowToClick)) {
+        const rows = paneSide.querySelectorAll('div[role="listitem"], div[role="row"], div[data-testid="cell-frame-container"]');
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const titleEl = row.querySelector('span[title], div[title], [data-testid="cell-frame-title"] span');
+          const name = titleEl ? (titleEl.getAttribute('title') || titleEl.textContent.trim()) : '';
+          if (name.toLowerCase() === contactName.toLowerCase() || row.innerText.toLowerCase().includes(contactName.toLowerCase())) {
+            rowToClick = row;
+            break;
+          }
         }
       }
 
-      if (targetRow) {
-        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        const clickTarget = targetRow.querySelector('div[role="button"]') || targetRow.querySelector('span[title]') || targetRow;
-        const rect = clickTarget.getBoundingClientRect();
+      if (rowToClick) {
+        rowToClick.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        const clickable = rowToClick.querySelector('div[role="button"]') || 
+                          rowToClick.querySelector('div[tabindex]') || 
+                          rowToClick.firstElementChild || 
+                          rowToClick;
+
+        const rect = clickable.getBoundingClientRect();
         const clientX = rect.left + rect.width / 2;
         const clientY = rect.top + rect.height / 2;
 
         const eventOptions = {
-          view: window,
           bubbles: true,
           cancelable: true,
+          view: window,
           buttons: 1,
           clientX: clientX,
-          clientY: clientY,
-          screenX: clientX,
-          screenY: clientY
+          clientY: clientY
         };
 
-        ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(evt => {
-          clickTarget.dispatchEvent(new MouseEvent(evt, eventOptions));
+        ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
+          clickable.dispatchEvent(new MouseEvent(type, eventOptions));
+          rowToClick.dispatchEvent(new MouseEvent(type, eventOptions));
         });
+
+        if (typeof clickable.click === 'function') {
+          clickable.click();
+        }
+        if (typeof rowToClick.click === 'function') {
+          rowToClick.click();
+        }
       } else {
+        // Fallback: Busca nativa
         const searchInput = document.querySelector('div[contenteditable="true"][data-tab="3"]') ||
                             document.querySelector('#side div[contenteditable="true"]') ||
                             document.querySelector('div[data-testid="chat-list-search"] div[contenteditable="true"]');
@@ -510,28 +528,21 @@
           searchInput.focus();
           document.execCommand('selectAll', false, null);
           document.execCommand('insertText', false, contactName);
-          
           searchInput.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: contactName }));
 
           setTimeout(() => {
             const firstResult = document.querySelector('#pane-side div[role="listitem"], #pane-side div[role="row"]');
             if (firstResult) {
-              const rect = firstResult.getBoundingClientRect();
               const clickTarget = firstResult.querySelector('div[role="button"]') || firstResult;
+              if (typeof clickTarget.click === 'function') clickTarget.click();
               ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(evt => {
-                clickTarget.dispatchEvent(new MouseEvent(evt, {
-                  view: window,
-                  bubbles: true,
-                  cancelable: true,
-                  clientX: rect.left + rect.width / 2,
-                  clientY: rect.top + rect.height / 2
-                }));
+                clickTarget.dispatchEvent(new MouseEvent(evt, { bubbles: true, cancelable: true, view: window }));
               });
             }
           }, 350);
         }
       }
-    }, 100);
+    }, 80);
   }
 
   /* --------------------------------------------------------------------------
