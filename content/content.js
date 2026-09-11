@@ -534,87 +534,8 @@
     }, 100);
   }
 
-  function getRecentChatMessages(contactName) {
-    const mainHeader = document.querySelector('#main header');
-    const headerTitle = mainHeader ? (mainHeader.querySelector('span[title]')?.getAttribute('title') || mainHeader.innerText || '') : '';
-    
-    if (headerTitle && (headerTitle.toLowerCase().includes(contactName.toLowerCase()) || contactName.toLowerCase().includes(headerTitle.toLowerCase()))) {
-      const msgContainers = document.querySelectorAll('#main div[data-testid="msg-container"], #main div.message-in, #main div.message-out');
-      if (msgContainers && msgContainers.length > 0) {
-        const lastFew = Array.from(msgContainers).slice(-5);
-        return lastFew.map(m => {
-          const isOut = m.classList.contains('message-out') || m.querySelector('[data-icon="msg-dblcheck"], [data-icon="msg-check"]') !== null;
-          const textEl = m.querySelector('.selectable-text span, [data-testid="selectable-text"]');
-          const timeEl = m.querySelector('div[data-testid="msg-meta"] span, span[aria-label*=":"]');
-          return {
-            text: textEl ? textEl.innerText.trim() : (m.innerText.split('\n')[0] || ''),
-            time: timeEl ? timeEl.innerText.trim() : '',
-            isOut: isOut
-          };
-        }).filter(m => m.text);
-      }
-    }
-    return null;
-  }
-
-  function sendWhatsAppTextMessage(contactName, messageText, callback) {
-    if (!messageText || !messageText.trim()) return;
-
-    openWhatsAppDirectly(contactName);
-
-    setTimeout(() => {
-      const composeBox = document.querySelector('#main footer div[contenteditable="true"]') ||
-                         document.querySelector('footer div[contenteditable="true"]') ||
-                         document.querySelector('div[data-tab="10"][contenteditable="true"]');
-      
-      if (composeBox) {
-        composeBox.focus();
-        document.execCommand('selectAll', false, null);
-        document.execCommand('insertText', false, messageText.trim());
-        composeBox.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: messageText.trim() }));
-
-        setTimeout(() => {
-          const sendBtn = document.querySelector('button[data-testid="compose-btn-send"]') ||
-                          document.querySelector('span[data-icon="send"]')?.closest('button') ||
-                          document.querySelector('footer button[aria-label*="Enviar"]') ||
-                          document.querySelector('footer button[aria-label*="Send"]');
-          
-          if (sendBtn) {
-            sendBtn.click();
-          } else {
-            const enterEvt = new KeyboardEvent('keydown', {
-              key: 'Enter',
-              code: 'Enter',
-              keyCode: 13,
-              which: 13,
-              bubbles: true,
-              cancelable: true
-            });
-            composeBox.dispatchEvent(enterEvt);
-          }
-
-          if (callback) callback(true);
-        }, 150);
-      } else {
-        if (callback) callback(false);
-      }
-    }, 280);
-  }
-
-  function openWhatsAppWithAttachment(contactName) {
-    openWhatsAppDirectly(contactName);
-    setTimeout(() => {
-      const attachBtn = document.querySelector('button[data-testid="clip"], span[data-icon="plus"]')?.closest('button') ||
-                        document.querySelector('span[data-icon="attach-menu-plus"]')?.closest('button') ||
-                        document.querySelector('span[data-icon="clip"]')?.closest('button');
-      if (attachBtn) {
-        attachBtn.click();
-      }
-    }, 350);
-  }
-
   /* --------------------------------------------------------------------------
-     Mini Painel de Atendimento (Histórico, Envio Rápido, Anexo e Notas)
+     Modal de Detalhes do Contato e CRM
      -------------------------------------------------------------------------- */
   function openChatModal(chat) {
     let modal = document.querySelector('#zap-chat-modal');
@@ -628,7 +549,6 @@
       getContactColumnMap((columnMap, notesMap) => {
         const currentCol = columnMap[chat.name] || chat.defaultCol;
         const currentNote = notesMap[chat.name] || '';
-        const recentMessages = getRecentChatMessages(chat.name);
 
         modal.innerHTML = `
           <div class="zap-modal-chatbox">
@@ -648,44 +568,11 @@
             </header>
 
             <div class="zap-modal-body">
-              <!-- Balões de Conversa / Histórico Recente -->
-              <div class="zap-modal-chat-section">
-                <div class="zap-modal-section-title">
-                  ${ICONS.chat}
-                  <span>Histórico da Conversa</span>
-                </div>
-                <div class="zap-chat-bubbles-container">
-                  ${recentMessages && recentMessages.length > 0 ? `
-                    ${recentMessages.map(m => `
-                      <div class="zap-bubble ${m.isOut ? 'zap-bubble-out' : 'zap-bubble-in'}">
-                        <div class="zap-bubble-text">${escapeHtml(m.text)}</div>
-                        ${m.time ? `<div class="zap-bubble-time">${escapeHtml(m.time)}</div>` : ''}
-                      </div>
-                    `).join('')}
-                  ` : `
-                    <div class="zap-bubble zap-bubble-in">
-                      <div class="zap-bubble-label">Última Mensagem</div>
-                      <div class="zap-bubble-text">${escapeHtml(chat.lastMessage)}</div>
-                      ${chat.time ? `<div class="zap-bubble-time">${escapeHtml(chat.time)}</div>` : ''}
-                    </div>
-                  `}
-                </div>
-              </div>
-
-              <!-- Caixa de Envio Rápido de Mensagem -->
-              <div class="zap-modal-quick-send-box">
-                <div class="zap-modal-section-title">
-                  ${ICONS.send}
-                  <span>Resposta Rápida</span>
-                </div>
-                <div class="zap-quick-send-input-wrap">
-                  <textarea id="zap-input-quick-msg" placeholder="Digite uma mensagem rápida... (Pressione Enter para enviar)"></textarea>
-                  <button class="zap-btn-quick-send" id="zap-btn-quick-send" title="Enviar Mensagem">
-                    ${ICONS.send}
-                    <span>Enviar</span>
-                  </button>
-                </div>
-                <div class="zap-quick-send-status" id="zap-quick-send-status" style="display: none;"></div>
+              <!-- Última Mensagem -->
+              <div class="zap-chat-bubble">
+                <div class="zap-chat-bubble-label">Última Mensagem</div>
+                <div style="word-break: break-word;">${escapeHtml(chat.lastMessage)}</div>
+                ${chat.time ? `<div style="font-size: 10px; color: rgba(255,255,255,0.5); text-align: right; margin-top: 4px;">${escapeHtml(chat.time)}</div>` : ''}
               </div>
 
               <!-- Caixa de Observação / Pendência Visual -->
@@ -718,16 +605,10 @@
             </div>
 
             <footer class="zap-modal-footer">
-              <div class="zap-modal-actions-grid">
-                <button class="zap-btn-action-wa zap-btn-attach-wa" id="zap-modal-btn-attach">
-                  ${ICONS.attach}
-                  <span>Enviar Anexo / Mídia</span>
-                </button>
-                <button class="zap-btn-action-wa zap-btn-direct-wa" id="zap-modal-btn-open-wa">
-                  ${ICONS.chat}
-                  <span>Abrir no WhatsApp</span>
-                </button>
-              </div>
+              <button class="zap-btn-direct-wa" id="zap-modal-btn-open-wa">
+                ${ICONS.chat}
+                <span>Abrir Conversa no WhatsApp Web</span>
+              </button>
             </footer>
           </div>
         `;
@@ -744,44 +625,6 @@
         modal.onclick = function(e) {
           if (e.target === modal) {
             modal.style.setProperty('display', 'none', 'important');
-          }
-        };
-
-        // Envio Rápido de Mensagem
-        const quickMsgInput = modal.querySelector('#zap-input-quick-msg');
-        const quickSendBtn = modal.querySelector('#zap-btn-quick-send');
-        const sendStatus = modal.querySelector('#zap-quick-send-status');
-
-        const handleQuickSend = () => {
-          const text = quickMsgInput.value.trim();
-          if (!text) return;
-
-          quickSendBtn.disabled = true;
-          quickSendBtn.innerHTML = `<span>Enviando...</span>`;
-
-          sendWhatsAppTextMessage(chat.name, text, (success) => {
-            quickMsgInput.value = '';
-            quickSendBtn.disabled = false;
-            quickSendBtn.innerHTML = `${ICONS.send} <span>Enviado! ✓</span>`;
-            
-            if (sendStatus) {
-              sendStatus.textContent = 'Mensagem enviada com sucesso no WhatsApp!';
-              sendStatus.style.display = 'block';
-            }
-
-            setTimeout(() => {
-              quickSendBtn.innerHTML = `${ICONS.send} <span>Enviar</span>`;
-              if (sendStatus) sendStatus.style.display = 'none';
-            }, 2500);
-          });
-        };
-
-        quickSendBtn.onclick = handleQuickSend;
-
-        quickMsgInput.onkeydown = (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleQuickSend();
           }
         };
 
@@ -815,17 +658,11 @@
           });
         };
 
-        // Ações do Footer
+        // Abrir Conversa
         modal.querySelector('#zap-modal-btn-open-wa').onclick = function(e) {
           e.preventDefault();
           e.stopPropagation();
           openWhatsAppDirectly(chat.name);
-        };
-
-        modal.querySelector('#zap-modal-btn-attach').onclick = function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          openWhatsAppWithAttachment(chat.name);
         };
       });
     });
