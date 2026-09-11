@@ -840,7 +840,7 @@
 
           <button class="zap-btn-ctrl zap-btn-add-col" id="zap-kb-btn-add-col" title="Adicionar nova etapa/coluna">
             ${ICONS.plus}
-            <span>+ Nova Coluna</span>
+            <span>Nova Coluna</span>
           </button>
 
           <button class="zap-btn-ctrl" id="zap-kb-btn-refresh" title="Atualizar">
